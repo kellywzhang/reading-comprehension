@@ -1,5 +1,22 @@
+"""
+Goal:
+    - Takes in batches of (document, question, answer) tuples,
+        runs bidirectional rnn, finds attention weights, and calculates loss
+
+Architecture Overview:
+    - Bidirectional LSTM/GRU on documents and questions (concatenate depth-wise)
+    - Take last outputs of questions (from each direction) as query vector
+    - Use bilinear weight to calculate similarity metric/attention weight for
+         each word in the document using the query vector
+    - Take weighted sum of word vectors and use that to make prediction
+
+Credits: Attentive Reader model developed by https://arxiv.org/pdf/1506.03340.pdf
+    and Stanford Reader model developed by https://arxiv.org/pdf/1606.02858v2.pdf
+"""
+
 import tensorflow as tf
 import numpy as np
+from tensorflow.python.ops import rnn_cell
 
 def getFLAGS():
 	# Model Hyperparameters
@@ -29,18 +46,37 @@ def getFLAGS():
 	return FLAGS
 
 class StanfordReader(object):
-	def __init__(self, input_dim, output_dim, num_nodes, l2_reg_lambda):
+    """
+    Purpose:
+    Instances of this class run the whole StanfordReader model.
+    """
+	def __init__(self, max_entities, vocab_size=50000, embedding_dim=100, l2_reg_lambda=0):
 		tf.set_random_seed(1234)
 
-		# Batch Inputs
-		self.input_x = tf.placeholder(tf.float32, [None, input_dim], name="input_x")
-		self.input_y = tf.placeholder(tf.float32, [None, output_dim], name="input_y")
+		# Batch Inputs (documents, questions, answers, entity_mask)
+		self.input_d = tf.placeholder(tf.float32, name="input_d")
+		self.input_q = tf.placeholder(tf.float32, name="input_q")
+        # REFORMAT ANSWER AS ONE HOT VECTOR?
+        self.input_a = tf.placeholder(tf.float32, [None, 1], name="input_a")
+        self.input_m = tf.placeholder(tf.float32, [None, max_entities], name="input_m")
 
 		# Keeping track of l2 regularization loss
 		l2_loss = tf.constant(0.0)
 
 		# Buildling Graph (Network Layers)
 		# ==================================================
+        W_embeddings = tf.Variable(
+			# vocab size, embeding dim, min, max
+			tf.random_uniform([vocab_size, embedding_dim], -0.01, 0.01),
+			name="W_embeddings")
+
+		document_embedding = tf.gather(W_embeddings, self.input_d)
+        question_embedding = tf.gather(W_embeddings, self.input_q)
+        #answer_embedding = tf.gather(W_embeddings, self.input_a)
+
+        # Bidirectional RNN
+        rnn_cell.GRUCell(num_units=128)
+
 		W = weight_variable(shape=[input_dim, output_dim], name="softmax_weight")
 		b = bias_variable(shape=[output_dim], name="softmax_bias")
 

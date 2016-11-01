@@ -152,8 +152,8 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
     d_indices = []
     q_indices = []
     a_indices = []
-    # Marks whether entity in the dictionary
-    entity_bools = np.zeros((len(answers), len(entity_dict)))
+    # Marks whether entity in the document
+    entity_mask = np.zeros((len(answers), len(entity_dict)))
 
     for i in range(len(answers)):
         d_words = documents[i].split(' ')
@@ -165,7 +165,7 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
             d_indices.append(seq1)
             q_indices.append(seq2)
             a_indices.append(entity_dict[answers[i]] if answers[i] in entity_dict else 0)
-            entity_bools[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1.0
+            entity_mask[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1.0
         if verbose and (i % 10000 == 0):
             print('Vectorization: processed {} / {}'.format(i, len(answers)))
 
@@ -178,9 +178,9 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
         d_indices = [d_indices[i] for i in sorted_index]
         q_indices = [q_indices[i] for i in sorted_index]
         a_indices = [a_indices[i] for i in sorted_index]
-        entity_bools = entity_bools[sorted_index]
+        entity_mask = entity_mask[sorted_index]
 
-    return d_indices, q_indices, a_indices, entity_bools
+    return d_indices, q_indices, a_indices, entity_mask
 
 def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
     """
