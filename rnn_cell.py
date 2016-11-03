@@ -1,77 +1,99 @@
+"""
+Goal:
+    - Create RNN cells
+
+TODO/ISSUES: Initilization, Testing, zero-state, batch dimension?, Check dimensions on EVERYTHING
+
+Credits: Adapted from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/rnn_cell.py
+"""
+
 import TensorFlow as tf
 
-class GRUCell(RNNCell):
+from tensorflow.python.ops.math_ops import sigmoid
+from tensorflow.python.ops.math_ops import tanh
+
+class GRUCell(object):
   """Gated Recurrent Unit cell (cf. http://arxiv.org/abs/1406.1078)."""
 
-  def __init__(self, num_units, input_size=None, activation=tanh):
-    if input_size is not None:
-      logging.warn("%s: The input_size parameter is deprecated.", self)
-    self._num_units = num_units
+  def __init__(self, hidden_size, inpugt_size, activation=tanh):
+    self._hidden_size = hidden_size
+    self._input_size = input_size
     self._activation = activation
 
   def __call__(self, inputs, state, scope=None):
-    """Gated recurrent unit (GRU) with nunits cells."""
+    """Gated recurrent unit (GRU) with hidden_size dimension cells."""
     with vs.variable_scope(scope or type(self).__name__):  # "GRUCell"
       with vs.variable_scope("Gates"):  # Reset gate and update gate.
         # We start with bias of 1.0 to not reset and not update.
-        r, u = array_ops.split(1, 2, _linear([inputs, state],
-                                             2 * self._num_units, True, 1.0))
-        r, u = sigmoid(r), sigmoid(u)
+        W_reset = tf.get_variable(name="reset_weight", shape=[hidden_size, hidden_size+input_size], \
+            initializer=tf.constant_initializer(0.0))
+        W_update = tf.get_variable(name="update_weight", shape=[hidden_size, hidden_size+input_size], \
+            initializer=tf.constant_initializer(0.0))
+        b_reset = tf.get_variable(name="reset_bias", shape=[hidden_size], initializer=tf.constant_initializer(0.0))
+        b_update = tf.get_variable(name="reset_bias", shape=[hidden_size], initializer=tf.constant_initializer(0.0))
+
+        reset = sigmoid(tf.matmul(W_reset, inputs) + b_reset)
+        update = sigmoid(tf.matmul(W_update, inputs) + b_update)
+
       with vs.variable_scope("Candidate"):
-        c = self._activation(_linear([inputs, r * state],
-                                     self._num_units, True))
-      new_h = u * state + (1 - u) * c
+        W_candidate = tf.get_variable(name="candidate_weight", shape=[hidden_size, hidden_size+input_size], \
+            initializer=tf.constant_initializer(0.0)) # change initializer
+        b_candidate = tf.get_variable(name="candidate_bias", shape=[hidden_size], \
+            initializer=tf.constant_initializer(0.0))
+
+        reset_input = tf.concat(0, [reset * state, inputs]) #check dimension, batches?
+        candidate = self._activation(tf.matmul(W_reset, reset_input) + b_candidate)
+
+      new_h = update * state + (1 - update) * candidate
     return new_h, new_h
 
-# WTH is this doing?
-def _linear(args, output_size, bias, bias_start=0.0, scope=None):
-  """Linear map: sum_i(args[i] * W[i]), where W[i] is a variable.
+    def zero_state:
+        pass #define this!!
 
-  Args:
-    args: a 2D Tensor or a list of 2D, batch x n, Tensors.
-    output_size: int, second dimension of W[i].
-    bias: boolean, whether to add a bias term or not.
-    bias_start: starting value to initialize the bias; 0 by default.
-    scope: VariableScope for the created subgraph; defaults to "Linear".
 
-  Returns:
-    A 2D Tensor with shape [batch x output_size] equal to
-    sum_i(args[i] * W[i]), where W[i]s are newly created matrices.
+class MultiRNNCell(RNNCell):
+  """RNN cell composed sequentially of multiple simple cells."""
 
-  Raises:
-    ValueError: if some of the arguments has unspecified or wrong shape.
-  """
-  if args is None or (nest.is_sequence(args) and not args):
-    raise ValueError("`args` must be specified")
-  if not nest.is_sequence(args):
-    args = [args]
+  def __init__(self, cells):
+    """Create a RNN cell composed sequentially of a number of RNNCells.
 
-  # Calculate the total size of arguments on dimension 1.
-  total_arg_size = 0
-  shapes = [a.get_shape().as_list() for a in args]
-  for shape in shapes:
-    if len(shape) != 2:
-      raise ValueError("Linear is expecting 2D arguments: %s" % str(shapes))
-    if not shape[1]:
-      raise ValueError("Linear expects shape[1] of arguments: %s" % str(shapes))
-    else:
-      total_arg_size += shape[1]
+    Args:
+      cells: list of RNNCells that will be composed in this order.
+      state_is_tuple: If True, accepted and returned states are n-tuples, where
+        `n = len(cells)`.  By default (False), the states are all
+        concatenated along the column axis.
 
-  dtype = [a.dtype for a in args][0]
+    Raises:
+      ValueError: if cells is empty (not allowed), or at least one of the cells
+        returns a state tuple but the flag `state_is_tuple` is `False`.
+    """
+    if not cells:
+      raise ValueError("Must specify at least one cell for MultiRNNCell.")
+    self._cells = cells
 
-  # Now the computation.
-  with vs.variable_scope(scope or "Linear"):
-    matrix = vs.get_variable(
-        "Matrix", [total_arg_size, output_size], dtype=dtype)
-    if len(args) == 1:
-      res = math_ops.matmul(args[0], matrix)
-    else:
-      res = math_ops.matmul(array_ops.concat(1, args), matrix)
-    if not bias:
-      return res
-    bias_term = vs.get_variable(
-        "Bias", [output_size],
-        dtype=dtype,
-        initializer=init_ops.constant_initializer(
-            bias_start, dtype=dtype))
-  return res + bias_term
+  @property
+  def state_size(self):
+      return sum([cell.state_size for cell in self._cells])
+
+  @property
+  def output_size(self):
+    return self._cells[-1].output_size
+
+  def __call__(self, inputs, state, scope=None):
+    """Run this multi-layer cell on inputs, starting from state."""
+    with vs.variable_scope(scope or type(self).__name__):  # "MultiRNNCell"
+      cur_state_pos = 0
+      cur_inp = inputs
+      new_states = []
+      for i, cell in enumerate(self._cells):
+        with vs.variable_scope("Cell%d" % i):
+            cur_state = array_ops.slice(
+                state, [0, cur_state_pos], [-1, cell.state_size])
+            cur_state_pos += cell.state_size
+          cur_inp, new_state = cell(cur_inp, cur_state)
+          new_states.append(new_state)
+    new_states = (array_ops.concat(1, new_states))
+    return cur_inp, new_states
+
+
+#Bidirectional

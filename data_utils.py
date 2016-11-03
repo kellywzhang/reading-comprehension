@@ -12,6 +12,7 @@ Datasets:
     Who-Did-What
 
 TODO/ISSUES: Numbers/times in documents (not represented well in vocabulary)
+             Make method for loading pre-trained word embeddings
 
 Credits: Primarily adapted from https://github.com/danqi/rc-cnn-dailymail
 """
@@ -180,6 +181,7 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
         a_indices = [a_indices[i] for i in sorted_index]
         entity_mask = entity_mask[sorted_index]
 
+    # Change a_indices to one-hot vector form
     return d_indices, q_indices, a_indices, entity_mask
 
 def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):

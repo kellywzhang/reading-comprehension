@@ -50,7 +50,7 @@ class StanfordReader(object):
     Purpose:
     Instances of this class run the whole StanfordReader model.
     """
-	def __init__(self, max_entities, vocab_size=50000, embedding_dim=100, l2_reg_lambda=0):
+	def __init__(self, max_entities, hidden_size=?, vocab_size=50000, embedding_dim=100, l2_reg_lambda=0):
 		tf.set_random_seed(1234)
 
 		# Batch Inputs (documents, questions, answers, entity_mask)
@@ -65,17 +65,28 @@ class StanfordReader(object):
 
 		# Buildling Graph (Network Layers)
 		# ==================================================
-        W_embeddings = tf.Variable(
+        W_embeddings = tf.get_variable(shape=[hidden_size, hidden_size+input_size], \
 			# vocab size, embeding dim, min, max
-			tf.random_uniform([vocab_size, embedding_dim], -0.01, 0.01),
+			initializer=tf.random_uniform([vocab_size, embedding_dim], -0.01, 0.01), # FIX THIS
 			name="W_embeddings")
+        # Make option to use pre-trained embeddings
 
 		document_embedding = tf.gather(W_embeddings, self.input_d)
         question_embedding = tf.gather(W_embeddings, self.input_q)
         #answer_embedding = tf.gather(W_embeddings, self.input_a)
 
-        # Bidirectional RNN
+        # Bidirectional RNN (for both Document and Query)
         rnn_cell.GRUCell(num_units=128)
+
+        # Attention Layer
+        W_attention = tf.get_variable(name="attention_weight", shape=[hidden_size, hidden_size+embedding_dim], \
+            initializer=tf.constant_initializer(0.0)) # Change initializer
+
+        attention_weights = matmul(W_attention, bidirectional-output)
+
+        # somehow computer weighted sum of bidirectional output
+
+
 
 		W = weight_variable(shape=[input_dim, output_dim], name="softmax_weight")
 		b = bias_variable(shape=[output_dim], name="softmax_bias")
@@ -88,22 +99,3 @@ class StanfordReader(object):
 			self.loss = tf.reduce_mean(cross_entropy) + l2_reg_lambda * l2_loss
 			correct_vector = tf.cast(tf.equal(tf.argmax(y_hat, 1), tf.argmax(self.input_y, 1)), tf.float32, name="correct_vector")
 			self.accuracy = tf.reduce_mean(correct_vector)
-
-# Helper Functions
-# ==================================================
-
-"""
-Ideally, I could simply choose the type of layers I want and then have
-specific functions for each type of layer and then simply chain the functions together
-to form a network
-
-functions for different types of layers (see https://github.com/aymericdamien/TensorFlow-Examples)
-"""
-
-def weight_variable(shape, name, initializer="truncated_normal"):
-	if initializer == "xavier":
-		return tf.get_variable(name=name, shape=shape, initializer=tf.contrib.layers.xavier_initializer(seed=11))
-	return tf.get_variable(name=name, shape=shape, initializer=tf.truncated_normal_initializer(stddev=0.1, seed=10))
-
-def bias_variable(shape, name):
-	return tf.get_variable(name=name, shape=shape, initializer=tf.constant_initializer(value=0.0))
