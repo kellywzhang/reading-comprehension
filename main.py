@@ -2,6 +2,8 @@
 Goal:
     - Create batches of (document, question, answer) tuples to feed into NN
     - Create a vocabulary dictionary that can be referred to later
+    - Run StanfordReader with batches
+    - Save model loss, variables, etc.
 
 Datasets:
     CNN (http://cs.nyu.edu/~kcho/DMQA/)
