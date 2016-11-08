@@ -137,7 +137,7 @@ def build_vocab(sentences, pickle_path=None, max_words=50000):
     # leave 0 to UNK
     # leave 1 to delimiter |||
     vocab_dict = {w[0]: index + 2 for (index, w) in enumerate(ls)}
-    if pickle:
+    if pickle_path:
         pickle.dump(vocab_dict, open(os.path.join(pickle_path, "vocabulary_dict"), "wb"))
     return vocab_dict
 

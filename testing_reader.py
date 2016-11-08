@@ -1,0 +1,111 @@
+import tensorflow as tf
+import numpy as np
+from rnn_cell import GRUCell
+
+# Parameters
+max_entities = 10
+hidden_size = 128
+vocab_size = 50000
+embedding_dim = 8
+batch_size = 2
+state_size = 11
+input_size = 8
+
+# Starting interactive Session
+sess = tf.InteractiveSession()
+
+# Placeholders
+# can add assert statements to ensure shared None dimensions are equal (batch_size)
+seq_lens = tf.placeholder(tf.int32, [None, ], name="seq_lens")
+input_d = tf.placeholder(tf.int32, [None, None], name="input_d")
+input_q = tf.placeholder(tf.int32, [None, None], name="input_q")
+input_a = tf.placeholder(tf.int32, [None, ], name="input_a")
+input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
+
+# toy feed dict
+feed = {
+    seq_lens: [5,4],
+    input_d: [[20,30,40,50,60],[2,3,4,5,-1]], # document
+    input_q: [[2,3,-1],[1,2,3]],              # query
+    input_a: [40,5],                          # answer
+    input_m: [2,3],                           # number of entities
+}
+
+# create 0, 1 masks (not boolean b/c tf's boolean_mask function reduces dimension of output)
+mask_d = tf.cast(input_d >= 0, tf.int32)
+mask_q = tf.cast(input_q >= 0, tf.int32)
+
+masked_d = tf.mul(input_d, mask_d)
+masked_q = tf.mul(input_q, mask_q)
+
+with tf.variable_scope("embedding"):
+    W_embeddings = tf.get_variable(shape=[vocab_size, embedding_dim], \
+                                   initializer=tf.random_uniform_initializer(-0.01, 0.01),\
+                                   name="W_embeddings")
+
+    # Dimensions: batch x max_length x embedding_dim
+    document_embedding = tf.gather(W_embeddings, masked_d)
+    question_embedding = tf.gather(W_embeddings, masked_q)
+
+    timesteps_d = document_embedding.get_shape()[1]
+    timesteps_q = question_embedding.get_shape()[1]
+
+    tf.split(1, timesteps_d, document_embedding)
+
+    slice1 = tf.slice(document_embedding, [0, 0, 0], [batch_size, 1, embedding_dim])
+    slice2 = tf.slice(document_embedding, [0, 1, 0], [batch_size, 2, embedding_dim])
+    #for i in range(batch_size):
+    #    slicei = tf.squeeze(slice1[i])
+
+    cell = GRUCell(state_size, input_size)
+    state = cell.zero_state(batch_size)
+    #output = cell(slice1[0], state)
+
+# Attention testing
+big_tensor = tf.constant([[[1,2,3,4],[4,5,6,7]], [[1,2,3,4],[4,5,6,7]], [[1,2,3,4],[4,5,6,7]]])
+flat = tf.reshape(big_tensor, [-1, 4])
+tensor = tf.constant([[1.0,2.,3.,4.],[4.,5.,6.,7.]])
+vector = tf.constant(np.transpose([[1.,1.,1.,1.]]), dtype=tf.float32)
+
+prod = tf.matmul(tensor, vector)
+
+maskk = tf.sequence_mask([1,2,3])
+
+# for softmax: tf.sequence_mask
+
+sess.run(tf.initialize_all_variables())
+"""
+# Attention testing
+print(maskk.eval())
+print(tensor.get_shape())
+print(vector.get_shape())
+print(flat.get_shape())
+print(flat.eval())
+print(prod.eval())
+"""
+"""print(input_m.get_shape())
+print(input_d.eval(feed))
+print(mask_d.eval(feed))
+print(masked_d.eval(feed))
+print(input_d.get_shape())
+print(masked_d.get_shape())
+
+
+print(input_d.eval(feed).shape)"""
+"""
+slices = slice1.eval(feed)
+print(type(slices))
+print(slices.shape)
+
+print(slice1[0].eval(feed))
+print(slice1[1].eval(feed))
+
+#print(slicei.eval(feed).shape)
+
+print(slice1.eval(feed))
+print(slice2.eval(feed))
+print(state.get_shape())
+
+print(document_embedding.eval(feed).shape)
+"""
+sess.close()
