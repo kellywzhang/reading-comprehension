@@ -67,6 +67,7 @@ def rnn(cell, inputs, seq_lens, batch_size, embedding_dim):
     # reshape hidden_states to (batch x time x hidden_state_size)
     hidden_states = tf.reshape(hidden_states, [batch_size, -1, cell._state_size])
 
+    # Dimensions: outputs (batch x time x hidden_size); last_state (batch x hidden_size)
     return (hidden_states, last_state)
 
 
@@ -86,6 +87,8 @@ def bidirectional_rnn(forward_cell, backward_cell, inputs, seq_lens, batch_size,
         # outputs dimensions: batch x time x hidden_size
         outputs = tf.concat(2, [forward_outputs, backward_outputs])
 
+        # Dimensions: outputs (batch x time x hidden_size*2); last_state (batch x hidden_size*2)
         return (outputs, last_state)
 
+    # Dimensions: outputs (batch x time x hidden_size); last_state (batch x hidden_size)
     return (forward_outputs, forward_last_state, backward_outputs, backward_last_state)
