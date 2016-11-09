@@ -13,6 +13,7 @@ vocab_size = 100
 sess = tf.InteractiveSession()
 
 inputx = tf.constant([[20,30,40,50,60],[2,3,4,5,0]])
+seq_lens = tf.constant([5,4])
 
 W_embeddings = tf.get_variable(shape=[vocab_size, embedding_dim], \
                                initializer=tf.random_uniform_initializer(-0.01, 0.01),\
@@ -30,13 +31,31 @@ state = cell.zero_state(batch_size)
 
 # RNN
 outputs = []
+print(dir(tf.reduce_max(seq_lens)))
+print(tf.reduce_max(seq_lens).__str__)
 
-for i in range(inputx.get_shape()[1]):
+seq_len_mask = tf.cast(tf.sequence_mask(seq_lens), tf.float32)
+anti_time_mask = tf.cast(seq_len_mask<=0, tf.float32)
+
+#for i in range(inputx.get_shape()[1]):
+
+a = tf.reduce_max(seq_lens).eval()
+
+for i in range(tf.reduce_max(seq_lens).eval()):
     with tf.variable_scope("Cell{}".format(i)):
         input_ = tf.slice(document_embedding, [0, i, 0], [batch_size, 1, embedding_dim])
         input_ = tf.squeeze(input_)
-        output, state = cell(input_, state)
+        time_mask = tf.slice(seq_len_mask, [0, i], [batch_size, 1])
+        output, state = cell(input_, state, time_mask)
         outputs.append(output)
+
+"""def a(x):
+    return x
+ = tf.scan(a, seq_lens)"""
+
+elems = tf.transpose(inputx) #np.array([1, 2, 3, 4, 5, 6])
+
+seqimp = tf.scan(lambda a, x: a + x, elems)
 
 sess.run(tf.initialize_all_variables())
 
@@ -44,9 +63,20 @@ print(slice1.get_shape())
 print(document_embedding.get_shape())
 print(input_.get_shape())
 print(outputs[0].eval())
+print(outputs[1].eval())
+print(outputs[2].eval())
+print(outputs[3].eval())
+print(outputs[4].eval())
 print(outputs)
 
-print(document_embedding.eval())
+print(a)
+
+print(seq_len_mask.eval())
+print(anti_time_mask.eval())
+
+print(seqimp.eval())
+
+#print(document_embedding.eval())
 #print(reverse.eval())
 
 sess.close()

@@ -2,7 +2,14 @@
 Goal:
     - Create RNN cells
 
-TODO/ISSUES: Initilization, Testing
+Important Concepts:
+    - Time Mask: When dealing with batches, one will encounter examples of different
+        lengths. The motivation for Time Mask is that we want the last state to be
+        the true last state for all examples.
+
+        This can be achieved through the following trick:
+            time_mask * new_hidden_state + (1 - time_mask) * prev_timestep_hidden_state
+    - Anti Time Mask: Simple the complement of the time mask (1 - time_mask)
 
 Credits: Adapted from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/rnn_cell.py
 """
@@ -14,11 +21,9 @@ from tensorflow.python.ops.math_ops import tanh
 class RNNCell(object):
   """Abstract object representing an RNN cell."""
 
-  def __call__(self, inputs, state, scope=None):
+  def __call__(self, inputs, state, time_mask, scope=None):
     """Run this RNN cell on inputs, starting from the given state."""
     raise NotImplementedError("Abstract method")
-
-
 
   def zero_state(self, batch_size):
     """Return zero-filled state tensor(s)."""
@@ -33,9 +38,7 @@ class GRUCell(RNNCell):
     self._input_size = input_size
     self._activation = activation
 
-  # Pass in mask for different length sequences
-  def __call__(self, inputs, state, scope=None):
-  #def __call__(self, inputs, state, time_mask, scope=None):
+  def __call__(self, inputs, state, time_mask, scope=None):
     """Gated recurrent unit (GRU) with state_size dimension cells."""
     with tf.variable_scope(scope or type(self).__name__):  # "GRUCell"
         input_size = self._input_size
@@ -64,10 +67,10 @@ class GRUCell(RNNCell):
             reset_input = tf.concat(1, [reset * state, inputs])
             candidate = self._activation(tf.matmul(reset_input, W_reset) + b_candidate)
 
+        # Complement of time_mask
+        anti_time_mask = tf.cast(time_mask<=0, tf.float32)
         new_h = update * state + (1 - update) * candidate
-        
-        #anti_time_mask = tf.cast(time_mask==0, tf.int32)
-        #new_h = time_mask * new_h + anti_time_mask * state
+        new_h = time_mask * new_h + anti_time_mask * state
 
     return new_h, new_h
 

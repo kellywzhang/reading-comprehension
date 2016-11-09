@@ -44,3 +44,46 @@ def output_size(self):
   raise NotImplementedError("Abstract method")
 
 """
+
+
+
+
+
+
+    """seq_len_mask = tf.cast(tf.sequence_mask(seq_lens), tf.float32)
+    time = tf.reduce_max(seq_lens)
+
+    def condition(i, inputs, batch_size, embedding_dim, seq_len_mask, state, outputs):
+        return tf.less(i, time)
+
+    def body(i, inputs, batch_size, embedding_dim, seq_len_mask, state, outputs):
+        with tf.variable_scope("Cell{}".format(i)):
+            input_ = tf.slice(inputs, [0, i, 0], [batch_size, 1, embedding_dim])
+            time_mask = tf.slice(seq_len_mask, [0, i], [batch_size, 1])
+            input_ = tf.squeeze(input_)
+            output, state = cell(input_, state, time_mask)
+            outputs.append(output)
+        return [tf.add(i, 1), inputs, batch_size, embedding_dim, seq_len_mask, state, outputs]
+
+    i = tf.constant(0)
+    r = tf.while_loop(condition, body, \
+        [i, inputs, batch_size, embedding_dim, seq_len_mask, state, outputs])"""
+
+    """for i in range(5):
+        with tf.variable_scope("Cell{}".format(i)):
+            input_ = tf.slice(inputs, [0, i, 0], [batch_size, 1, embedding_dim])
+            time_mask = tf.slice(seq_len_mask, [0, i], [batch_size, 1])
+            input_ = tf.squeeze(input_)
+            output, state = cell(input_, state, time_mask)
+            outputs.append(output)"""
+
+    #for i in range(tf.reduce_max(seq_lens).eval()):
+    """for i in range(5):
+        with tf.variable_scope("Cell{}".format(i)):
+            input_ = tf.slice(inputs, [0, i, 0], [batch_size, 1, embedding_dim])
+            time_mask = tf.slice(seq_len_mask, [0, i], [batch_size, 1])
+            input_ = tf.squeeze(input_)
+            output, state = cell(input_, state, time_mask)
+            outputs.append(output)"""
+
+    #return (outputs, state)
