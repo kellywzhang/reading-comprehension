@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from rnn_cell import GRUCell
-from rnn import rnn
+from rnn import rnn, bidirectional_rnn
 
 # Parameters
 max_entities = 10
@@ -135,8 +135,38 @@ hidden_states = tf.slice(hidden_states, [0, 1], [batch_size, -1])
 hidden_states = tf.reshape(hidden_states, [batch_size, -1, state_size])
 
 # for softmax: tf.sequence_mask
+#document_embedding
+reverse = tf.reverse_sequence(document_embedding, seq_lens, seq_dim=1, batch_dim=0)
+
+inputs = document_embedding
+reverse_inputs = tf.reverse_sequence(inputs, seq_lens, seq_dim=1, batch_dim=0)
+
+forward_cell = GRUCell(state_size, input_size, scope="GRU-Forward")
+backward_cell = GRUCell(state_size, input_size, scope="GRU-Backward")
+
+#forward_outputs, forward_last_state = rnn(forward_cell, inputs, seq_lens, batch_size, embedding_dim)
+#backward_outputs, backward_last_state = rnn(backward_cell, reverse_inputs, seq_lens, batch_size, embedding_dim)
+
+#LS = tf.concat(1, [forward_last_state, backward_last_state])
+#LSS = tf.concat(2, [forward_outputs, backward_outputs])
+
+LS, LSS = bidirectional_rnn(forward_cell, backward_cell, inputs, seq_lens, batch_size, embedding_dim, concatenate=True)
 
 sess.run(tf.initialize_all_variables())
+"""
+print(forward_last_state.eval(feed))
+print(backward_last_state.eval(feed))
+print(forward_last_state.eval(feed).shape) # batch x hidden_state
+"""
+print(LS.eval(feed))
+print(LS.eval(feed).shape)
+print(LSS.eval(feed))
+print(LSS.eval(feed).shape)
+
+#print(forward_outputs.eval(feed))
+#print(backward_outputs.eval(feed))
+#print(backward_outputs.eval(feed).shape)
+
 """print(outputs[0].eval(feed))
 print(outputs[1].eval(feed))
 print(outputs[2].eval(feed))
@@ -153,8 +183,10 @@ print(r[2].eval(feed))
 print(r[3].eval(feed))"""
 #print(ijk_final.eval())
 
-print(outputs.eval(feed))
-print(last_state.eval(feed))
+#print(outputs.eval(feed))
+#print(last_state.eval(feed))
+#print(document_embedding.eval(feed))
+#print(reverse.eval(feed))
 
 """
 # Attention testing

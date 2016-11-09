@@ -3,10 +3,10 @@ Goal:
     - Create RNN layers
 
 Important Concepts/Design Choices:
-    - It is difficult in TF to iterate over variable number of iterations based
+    - For "rnn" it is difficult in TF to iterate over variable number of iterations based
         on the value of a tensor (I couldn't figure this out, nor could I find any
         examples of others doing this). Thus how is it possible to iterate for variable
-        number of time steps for each batch. This is where the use of TF's control
+        number of time steps for each batch? This is where the use of TF's control
         flow options come in, namely tf.while_loop. See inline comments for details.
 
 TODO/FIX: Get iteration numbers for RNN? Scope
@@ -70,17 +70,22 @@ def rnn(cell, inputs, seq_lens, batch_size, embedding_dim):
     return (hidden_states, last_state)
 
 
-def bidirectional_rnn(forward_cell, backward_cell, inputs, concatenate=True):
-    #Reverse inputs using tf.reverse_sequence(input, seq_lengths, seq_dim, batch_dim=None, name=None)
-    # Add seqLen params
+def bidirectional_rnn(forward_cell, backward_cell, inputs, seq_lens, batch_size, embedding_dim, concatenate=True):
+    # Reverse inputs (batch x time x embedding_dim); takes care of variable seq_len
+    reverse_inputs = tf.reverse_sequence(inputs, seq_lens, seq_dim=1, batch_dim=0)
 
-    forward_outputs, forward_last_state = rnn(forward_cell, inputs)
-    backward_outputs, backward_last_state = rnn(backward_cell, inputs)
+    # Run forwards and backwards RNN
+    forward_outputs, forward_last_state = \
+        rnn(forward_cell, inputs, seq_lens, batch_size, embedding_dim)
+    backward_outputs, backward_last_state = \
+        rnn(backward_cell, reverse_inputs, seq_lens, batch_size, embedding_dim)
 
     if concatenate:
-        # FIGURE OUT PROPER DIMENSIONS
-        #outputs = tf.concatenate(axis, [foward_outputs, backward_outputs])
-        #last_state = tf.concatenate(axis, [forward_last_state, backward_last_state])
+        # last_state dimensions: batch x hidden_size
+        last_state = tf.concat(1, [forward_last_state, backward_last_state])
+        # outputs dimensions: batch x time x hidden_size
+        outputs = tf.concat(2, [forward_outputs, backward_outputs])
+
         return (outputs, last_state)
 
     return (forward_outputs, forward_last_state, backward_outputs, backward_last_state)

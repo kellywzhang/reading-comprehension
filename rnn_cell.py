@@ -32,15 +32,16 @@ class RNNCell(object):
 class GRUCell(RNNCell):
   """Gated Recurrent Unit cell (cf. http://arxiv.org/abs/1406.1078)."""
 
-  def __init__(self, state_size, input_size, activation=tanh):
+  def __init__(self, state_size, input_size, scope=None, activation=tanh):
     self._state_size = state_size
     self._output_size = state_size
     self._input_size = input_size
     self._activation = activation
+    self._scope = scope
 
   def __call__(self, inputs, state, time_mask, scope=None):
     """Gated recurrent unit (GRU) with state_size dimension cells."""
-    with tf.variable_scope(scope or type(self).__name__):  # "GRUCell"
+    with tf.variable_scope(self._scope or type(self).__name__):  # "GRUCell"
         input_size = self._input_size
         state_size = self._state_size
 
