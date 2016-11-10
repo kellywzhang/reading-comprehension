@@ -45,8 +45,8 @@ class BilinearFunction(object):
           # Custom Softmax b/c need to use time_mask --------------------
           # Also numerical stability: alpha_weights = tf.nn.softmax(dot_prod)
 
-          numerator = tf.exp(dot_prod * seq_len_mask) #batch x time
-          denom = tf.reduce_sum(tf.exp(dot_prod * seq_len_mask), 1)
+          numerator = tf.exp(dot_prod) * seq_len_mask #batch x time
+          denom = tf.reduce_sum(tf.exp(dot_prod) * seq_len_mask, 1)
 
           # get 1/denom so can multiply with numerator
           inv = tf.truediv(tf.ones(denom.get_shape()), denom)
