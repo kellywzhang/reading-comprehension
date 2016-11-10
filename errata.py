@@ -87,3 +87,9 @@ def output_size(self):
             outputs.append(output)"""
 
     #return (outputs, state)
+
+# HAVE TO PAD dot_prod to size of max_time !!!!!!!!!!!!!!!!!!!!
+# softmax layer - must make masks
+#W_softmax = tf.get_variable(name="bilinear_softmax_weight", shape=[max_time, max_entities], \
+#    initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
+#tf.matmul(dot_prod, W_softmax)
