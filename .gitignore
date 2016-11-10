@@ -9,3 +9,4 @@ reference/*
 ######################
 /*.ipynb
 errata.py
+.DS_Store
