@@ -3,7 +3,6 @@ Goal: Create classes to easily implement different attention mechanisms.
 
 Issues:
     - MUST MAKE SOFTMAX NUMERICALLY STABLE
-    - PERHAPS SHOULD RETURN WEIGHTS AS WELL AS WEIGHTED SUM OF ATTENDED
     - Find out what initializer to user for bilinear weight
 
 Credits: Idea from https://arxiv.org/pdf/1606.02858v2.pdf
@@ -43,10 +42,7 @@ class BilinearFunction(object):
           # Dimensions (batch x time)
           seq_len_mask = tf.cast(tf.sequence_mask(seq_lens), tf.float32)
 
-          tf.exp(dot_prod * seq_len_mask)
-          tf.reduce_sum(tf.exp(tf.exp(dot_prod * seq_len_mask)), 1)
-
-          # Custom Softmax b/c need to use time_mask
+          # Custom Softmax b/c need to use time_mask --------------------
           # Also numerical stability: alpha_weights = tf.nn.softmax(dot_prod)
 
           numerator = tf.exp(dot_prod * seq_len_mask) #batch x time
@@ -54,7 +50,7 @@ class BilinearFunction(object):
 
           # get 1/denom so can multiply with numerator
           inv = tf.truediv(tf.ones(denom.get_shape()), denom)
-          # Transpose so broadcasting scalar multiplication works properly
+          # Transpose so broadcasting scmultiplication works properly
           # Dimensions (batch x time)
           alpha_weights = tf.transpose(tf.mul(tf.transpose(numerator), inv))
 
