@@ -1,5 +1,11 @@
+# Directories #
+######################
 __pycache__/*
 development/*
 reference/*
+.ipynb_checkpoints/*
+
+# Files #
+######################
 /*.ipynb
 errata.py
