@@ -1,5 +1,10 @@
 import tensorflow as tf
 import numpy as np
+import os
+import sys
+os.path.abspath(os.path.curdir)[:-8]
+sys.path.insert(0, os.path.abspath(os.path.curdir)[:-8])
+
 from rnn_cell import GRUCell
 from rnn import rnn, bidirectional_rnn
 

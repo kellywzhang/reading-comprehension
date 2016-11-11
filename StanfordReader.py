@@ -13,6 +13,7 @@ Architecture Overview:
 Issues:
     - Better to pass mask itself instead of repeatedly creating masks with seq_lens?
     - Make softmax numerically stable
+    - Gradient Clipping in GRU
 
 Credits: Attentive Reader model developed by https://arxiv.org/pdf/1506.03340.pdf
     and Stanford Reader model developed by https://arxiv.org/pdf/1606.02858v2.pdf
