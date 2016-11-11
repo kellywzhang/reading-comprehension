@@ -68,7 +68,6 @@ class StanfordReader(object):
         input_q = tf.placeholder(tf.int32, [None, None], name="input_q")
         input_a = tf.placeholder(tf.int32, [None, ], name="input_a")
         input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
-        n_steps = tf.placeholder(tf.int32)
 
         mask_d = tf.cast(tf.sequence_mask(seq_lens_d), tf.int32)
         mask_q = tf.cast(tf.sequence_mask(seq_lens_q), tf.int32)
