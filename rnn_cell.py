@@ -53,8 +53,10 @@ class GRUCell(RNNCell):
                 initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
             W_update = tf.get_variable(name="update_weight", shape=[state_size+input_size, state_size], \
                 initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
-            b_reset = tf.get_variable(name="reset_bias", shape=[state_size], initializer=tf.constant_initializer(1.0))
-            b_update = tf.get_variable(name="update_bias", shape=[state_size], initializer=tf.constant_initializer(1.0))
+            b_reset = tf.get_variable(name="reset_bias", shape=[state_size], \
+                initializer=tf.constant_initializer(1.0))
+            b_update = tf.get_variable(name="update_bias", shape=[state_size], \
+                initializer=tf.constant_initializer(1.0))
 
             reset = sigmoid(tf.matmul(hidden, W_reset) + b_reset)
             update = sigmoid(tf.matmul(hidden, W_update) + b_update)

@@ -10,6 +10,10 @@ Architecture Overview:
          each word in the document using the query vector
     - Take weighted sum of word vectors and use that to make prediction
 
+Issues:
+    - Better to pass mask itself instead of repeatedly creating masks with seq_lens?
+    - Make softmax numerically stable
+
 Credits: Attentive Reader model developed by https://arxiv.org/pdf/1506.03340.pdf
     and Stanford Reader model developed by https://arxiv.org/pdf/1606.02858v2.pdf
 """
@@ -50,66 +54,82 @@ class StanfordReader(object):
     Purpose:
     Instances of this class run the whole StanfordReader model.
     """
-	def __init__(self, max_entities, hidden_size=128, vocab_size=50000, embedding_dim=100):
+	def __init__(self, max_entities, hidden_size=128, vocab_size=50000, \
+        embedding_dim=100, batch_size=32):
+
 		tf.set_random_seed(1234)
 
-		# Batch Inputs (documents, questions, answers, entity_mask)
-        # Dimensions: batch x max_length
-		self.input_d = tf.placeholder(tf.float32, name="input_d")
-		self.input_q = tf.placeholder(tf.float32, name="input_q")
-        self.input_a = tf.placeholder(tf.float32, [None, 1], name="input_a")
-        self.input_m = tf.placeholder(tf.float32, [None, max_entities], name="input_m")
+        # Placeholders
+        # can add assert statements to ensure shared None dimensions are equal (batch_size)
+        seq_lens_d = tf.placeholder(tf.int32, [None, ], name="seq_lens_d")
+        seq_lens_q = tf.placeholder(tf.int32, [None, ], name="seq_lens_q")
+        input_d = tf.placeholder(tf.int32, [None, None], name="input_d")
+        input_q = tf.placeholder(tf.int32, [None, None], name="input_q")
+        input_a = tf.placeholder(tf.int32, [None, ], name="input_a")
+        input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
+        n_steps = tf.placeholder(tf.int32)
 
-		# Buildling Graph (Network Layers)
+        mask_d = tf.cast(tf.sequence_mask(seq_lens_d), tf.int32)
+        mask_q = tf.cast(tf.sequence_mask(seq_lens_q), tf.int32)
+
+        # Document and Query embeddings; One-hot-encoded answers
+        masked_d = tf.mul(input_d, mask_d)
+        masked_q = tf.mul(input_q, mask_q)
+        one_hot_a = tf.one_hot(input_a, max_entities)
+
+        # Buildling Graph (Network Layers)
 		# ==================================================
-        W_embeddings = tf.get_variable(shape=[vocab_size, embedding_dim], \
-			initializer=tf.random_uniform_initializer(-0.01, 0.01),
-			name="W_embeddings")
-        ################## Make option to use pre-trained embeddings ##################
+        with tf.variable_scope("embedding"):
+            W_embeddings = tf.get_variable(shape=[vocab_size, embedding_dim], \
+                                           initializer=tf.random_uniform_initializer(-0.01, 0.01),\
+                                           name="W_embeddings")
+            ################## Make option to use pre-trained embeddings ##################
 
-        embeddings_with_pad = tf.concat(0, [W_embeddings, tf.zeros(shape=[1, embedding_dim])])
+            # Dimensions: batch x max_length x embedding_dim
+            document_embedding = tf.gather(W_embeddings, masked_d)
+            question_embedding = tf.gather(W_embeddings, masked_q)
 
-        # Dimensions: batch x max_length x embedding_dim
-		document_embedding = tf.gather(embeddings_with_pad, self.input_d)
-        question_embedding = tf.gather(embeddings_with_pad, self.input_q)
-        #answer_embedding = tf.gather(embeddings_with_pad, self.input_a)
+        with tf.variable_scope("bidirection_rnn"):
+            # Bidirectional RNNs for Document and Question
+            forward_cell_d = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-D")
+            backward_cell_d = GRUCell(state_size=hidden_size,, input_size=embedding_dim, scope="GRU-Backward-D")
 
-        # Bidirectional RNN (for both Document and Query)
-        ### Document
-        num_steps_d = self.input_d.get_shape()[1]
-        gru_cell_d_forward = rnn_cell.GRUCell(state_size=128, input_size=embedding_dim, scope="gru_document_forward")
-        gru_cell_d_backward = rnn_cell.GRUCell(state_size=128, input_size=embedding_dim, scope="gru_document_backward")
-        # Dimension: batch x time x hidden_size*2; batch x 1 x hidden_size*2
-        outputs_d, last_state_d = rnn.bidirectional_rnn(gru_cell_d_forward, gru_cell_d_backward, self.input_d, concatenate=True)
-        # make mask for documents before attention layer
+            forward_cell_q = GRUCell(state_size=hidden_size,, input_size=embedding_dim, scope="GRU-Forward-Q")
+            backward_cell_q = GRUCell(state_size=hidden_size,, input_size=embedding_dim, scope="GRU-Backward-Q")
 
-        ### Query
-        num_steps_q = self.input_q.get_shape()[1]
-        gru_cell_q_forward = rnn_cell.GRUCell(state_size=128, input_size=embedding_dim, scope="gru_query_forward")
-        gru_cell_q_backward = rnn_cell.GRUCell(state_size=128, input_size=embedding_dim, scope="gru_query_backward")
-        outputs_q, last_state_q = rnn.bidirectional_rnn(gru_cell_q_forward, gru_cell_q_backward self.input_d, concatenate=False)
-        # must get correct timesteps for outputs!!!!!!!!
+            hidden_states_d, last_state_d = bidirectional_rnn(forward_cell_d, backward_cell_d, \
+                document_embedding, seq_lens_d, batch_size, embedding_dim, concatenate=True)
 
-        # Attention Layer
-        W_attention = tf.get_variable(name="attention_weight", shape=[hidden_size*2, hidden_size*2], \
-            initializer=tf.random_uniform_initializer(-0.01, 0.01))
-        attention_metric = matmul(query_vector, W_attention)
-        attention_weights = matmul(attention_metric, outputs_d) # do these dimensions work???, need batch matmul?
+            hidden_states_q, last_state_q = bidirectional_rnn(forward_cell_q, backward_cell_q, \
+                question_embedding, seq_lens_q, batch_size, embedding_dim, concatenate=True)
 
-        # scalar multiply output_d by attention weights, then tf.gather
+        with tf.variable_scope("attention"):
+            # Attention Layer
+            attention = BilinearFunction(attending_size=hidden_size*2, attended_size=hidden_size*2)
+            alpha_weights, attend_result = attention(attending=last_state_q, attended=hidden_states_d, \
+                seq_lens=seq_lens_d, batch_size=batch_size)
 
-		W_softmax = tf.get_variable(shape=[hidden_size*2, max_num_entities], name="softmax_weight", \
-            initializer==tf.random_uniform_initializer(-0.01, 0.01))
-		b_softmax = tf.get_variable(shape=[max_num_entities]], name="softmax_bias", \
-            initializer=initializer=tf.constant_initializer(0.0))
+        with tf.variable_scope("prediction"):
+            W_predict = tf.get_variable(name="predict_weight", shape=[hidden_size*2, max_entities], \
+                initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
+            b_predict = tf.get_variable(name="predict_bias", shape=[max_entities],
+                initializer=initializer=tf.constant_initializer(0.0))
+            # Dimensions (batch_size x state_size/hidden_size*2)
+            prediction_probs_unnormalized = tf.matmul(attend_result, W_predict) + b_predict
 
-		y_hat = tf.nn.softmax(tf.matmul(attention-weighted-document, W_softmax) + b_softmax)
+            # Custom Softmax b/c need to use time_mask --------------------
+            # Also numerical stability:
+            mask_m = tf.cast(tf.sequence_mask(input_m, maxlen=10), tf.float32)
+            numerator = tf.exp(prediction_probs_unnormalized) * mask_m
+            denom = tf.reduce_sum(tf.exp(prediction_probs_unnormalized) * mask_m, 1)
 
-		# Softmax Cross-Entropy Loss
-		with tf.name_scope("output"):
-            # HAVE TO MAKE self.input_a one-hot
-			cross_entropy = tf.nn.softmax_cross_entropy_with_logits(y_hat, self.input_a)
-            # MASK HERE?? How to perform softmax over different number of inputs within batch?
-			self.loss = tf.reduce_mean(cross_entropy)
-			correct_vector = tf.cast(tf.equal(tf.argmax(y_hat, 1), tf.argmax(self.input_a, 1)), tf.float32, name="correct_vector")
-			self.accuracy = tf.reduce_mean(correct_vector)
+            # Transpose so broadcasting scalar division works properly
+            # Dimensions (batch x time)
+            prediction_probs = tf.transpose(tf.div(tf.transpose(numerator), denom))
+            likelihoods = tf.reduce_sum(tf.mul(prediction_probs, one_hot_a), 1)
+            log_likelihoods = tf.log(likelihoods)
+            # Negative log-likelihood loss
+            self.loss = tf.mul(tf.reduce_sum(log_likelihoods), -1)
+            correct_vector = tf.cast(tf.equal(tf.argmax(one_hot_a, 1), tf.argmax(prediction_probs, 1)), \
+                tf.float32, name="correct_vector")
+            self.accuracy = tf.reduce_mean(correct_vector)

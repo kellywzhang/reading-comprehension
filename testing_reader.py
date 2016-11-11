@@ -76,37 +76,7 @@ prod = tf.matmul(tensor, vector)
 
 maskk = tf.sequence_mask([1,2,3])
 
-#a = input_d._shape._dims[1]._value
 
-#time = tf.reduce_max(seq_lens)
-"""
-time = tf.constant(5)
-c = lambda i: tf.greater_equal(time, 0)
-b = lambda i: tf.sub(i, 1)
-r = tf.while_loop(c, b, [time])
-print(r)
-"""
-#tf.while_loop(cond, body, loop_vars)
-
-"""i = tf.constant(0)
-j = tf.constant(0)
-#time = tf.constant(5)
-time = tf.reduce_max(seq_lens)
-c = lambda i: tf.less(i, time)
-b = lambda i: tf.add(i, 1)
-r = tf.while_loop(c, b, [i])"""
-
-"""
-def condition(x, y):
-    return tf.less(x, time)
-
-def body(x, y):
-    return [tf.add(x, 1), y]
-
-time = tf.reduce_max(seq_lens)
-#time = tf.constant(5)
-i = tf.constant(0)
-r = tf.while_loop(condition, body, [i, time])"""
 
 cell = GRUCell(state_size, input_size)
 state = cell.zero_state(batch_size)

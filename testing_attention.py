@@ -32,9 +32,10 @@ num = tf.exp(dot_prod) #batch x time
 denom = tf.reduce_sum(tf.exp(dot_prod), 1) # batch x ,
 
 # get 1/denom so can multiply with numerator
-inv = tf.truediv(tf.ones(denom.get_shape()), denom)
+#inv = tf.truediv(tf.ones(denom.get_shape()), denom)
 
-result = tf.transpose(tf.mul(tf.transpose(num), inv))
+#result = tf.transpose(tf.mul(tf.transpose(num), inv))
+result = tf.transpose(tf.div(tf.transpose(num), denom))
 
 # Find weighted sum of attended tensor using alpha_weights
 # attended dimensions: (batch x time x attended_size)

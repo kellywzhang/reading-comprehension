@@ -18,7 +18,7 @@ class BilinearFunction(object):
 
     # Expect dimensions: attending (batch x attending_size),
         # attended (batch x time x attended_size) - time could be other dim value
-    def __call__(self, attending, attended, seq_lens, scope=None):
+    def __call__(self, attending, attended, seq_lens, batch_size, scope=None):
       with tf.variable_scope(self._scope or type(self).__name__):  # "BilinearFunction"
           attending_size = self._attending_size
           attended_size= self._attended_size
@@ -48,11 +48,9 @@ class BilinearFunction(object):
           numerator = tf.exp(dot_prod) * seq_len_mask #batch x time
           denom = tf.reduce_sum(tf.exp(dot_prod) * seq_len_mask, 1)
 
-          # get 1/denom so can multiply with numerator
-          inv = tf.truediv(tf.ones(denom.get_shape()), denom)
-          # Transpose so broadcasting scmultiplication works properly
+          # Transpose so broadcasting scalar division works properly
           # Dimensions (batch x time)
-          alpha_weights = tf.transpose(tf.mul(tf.transpose(numerator), inv))
+          alpha_weights = tf.transpose(tf.div(tf.transpose(numerator), denom))
 
           # Find weighted sum of attended tensor using alpha_weights
           # attended dimensions: (batch x time x attended_size)
