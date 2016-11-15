@@ -7,7 +7,8 @@ import time
 import datetime
 from StanfordReader import StanfordReader
 from tensorflow.contrib import learn
-
+import cPickle
+import data_utils as dutils
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):
     """
@@ -29,7 +30,6 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield shuffled_data[start_index:end_index]
 
-
 # ======================== MODEL HYPERPARAMETERS ========================================
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_integer("num_nodes", 16, "Number of nodes in fully connected layer")
@@ -37,7 +37,7 @@ tf.flags.DEFINE_float("learning_rate", 0.001, "Learning rate")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "Weight lambda on l2 regularization")
 
 # Training Parameters
-tf.flags.DEFINE_integer("batch_size", 100, "Batch Size")
+tf.flags.DEFINE_integer("batch_size", 32, "Batch Size")
 tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("patience", 800, "Minimum number of batches seen before early stopping")
 tf.flags.DEFINE_integer("patience_increase", 6, "Number of dev evaluations of increasing loss before early stopping")
@@ -62,111 +62,34 @@ print("")
 # =============================== PREPARING DATA FOR TRAINING/VALIDATION/TESTING ===============================================
 print("Loading data...")
 
-# LOADING DOCUMENTS
+# Preparing the data only once and saving it for further usage.
 
-# Train
-with open('../data_prep/top_50k/train_documents.txt', 'r') as train_d_file:
-	train_d = [x.strip() for x in train_d_file.readlines()]
+# dutils.one_time_data_preparation()
 
-print ("Number of training documents: ", len(train_d))
+# Loading all data points from pickle files
+all_corpus_vocabulary = cPickle.load(open('pickled_data/all_corpus_vocab.p', 'rb'))
 
-# Validation
-with open('../data_prep/top_50k/val_documents.txt', 'r') as val_d_file:
-	val_d = [x.strip() for x in val_d_file.readlines()]
+print ("Loading documents....")
 
-print ("Number of validation documents: ", len(val_d))
+x_train_d = np.load(open('pickled_data/x_train_d', 'rb'))
+x_val_d = np.load(open('pickled_data/x_val_d', 'rb'))
+x_test_d = np.load(open('pickled_data/x_test_d', 'rb'))
 
-# Test
-with open('../data_prep/top_50k/test_documents.txt', 'r') as test_d_file:
-	test_d = [x.strip() for x in test_d_file.readlines()]
+print ("Loading questions....")
 
-print ("Number of test documents: ", len(test_d))
+x_train_q = np.load(open('pickled_data/x_train_q', 'rb'))
+x_val_q = np.load(open('pickled_data/x_val_q', 'rb'))
+x_test_q = np.load(open('pickled_data/x_test_q', 'rb'))
 
+print ("Loading choices....")
+y_train_choices = np.load(open('pickled_data/y_train_choices', 'rb'))
+y_val_choices = np.load(open('pickled_data/y_val_choices', 'rb'))
+y_test_choices = np.load(open('pickled_data/y_test_choices', 'rb'))
 
-# LOADING QUESTIONS
-
-# Train
-with open('../data_prep/top_50k/train_questions.txt', 'r') as train_q_file:
-	train_q = [x.strip() for x in train_q_file.readlines()]
-
-print ("Number of training questions: ", len(train_q))
-
-# Validation
-with open('../data_prep/top_50k/val_questions.txt', 'r') as val_q_file:
-	val_q = [x.strip() for x in val_q_file.readlines()]
-
-print ("Number of validation questions: ", len(val_q))
-
-
-# Test
-with open('../data_prep/top_50k/test_questions.txt', 'r') as test_q_file:
-	test_q = [x.strip() for x in test_q_file.readlines()]
-
-print ("Number of test questions: ", len(test_q))
-
-
-# Build documents vocabulary
-train_corpus_d = train_d + val_d + test_d
-max_length_d = max([len(x.split(" ")) for x in train_corpus_d])
-vocab_processor_d = learn.preprocessing.VocabularyProcessor(max_length_d)
-
-x_train_d = np.array(list(vocab_processor_d.fit_transform(train_d)))
-x_val_d = np.array(list(vocab_processor_d.fit_transform(val_d)))
-x_test_d = np.array(list(vocab_processor_d.fit_transform(test_d)))
-
-print ("Size of document training set: ", x_train_d.shape)
-print ("Size of document validation set: ", x_val_d.shape)
-print ("Size of document test set: ", x_test_d.shape)
-
-# Build questions vocabulary
-train_corpus_q = train_q + val_q + test_q
-max_length_q = max([len(x.split(" ")) for x in train_corpus_q])
-vocab_processor_q = learn.preprocessing.VocabularyProcessor(max_length_q)
-
-x_train_q = np.array(list(vocab_processor_q.fit_transform(train_q)))
-x_val_q = np.array(list(vocab_processor_q.fit_transform(val_q)))
-x_test_q = np.array(list(vocab_processor_q.fit_transform(test_q)))
-
-print ("Size of question training set: ", x_train_q.shape)
-print ("Size of question validation set: ", x_val_q.shape)
-print ("Size of question test set: ", x_test_q.shape)
-
-
-# Preparing the answers
-
-# Train
-with open('../data_prep/top_50k/train_choices.txt', 'r') as train_choice_file:
-	all_train_choices = [y for y in x.strip().split(',') for x in train_choice_file.readlines()]
-
-with open('../data_prep/top_50k/train_correct_choices.txt', 'r') as train_correct_file:
-	train_correct_choices = [x.strip() for x in train_correct_file.readlines()]
-
-# Validation
-with open('../data_prep/top_50k/val_choices.txt', 'r') as val_choice_file:
-	all_val_choices = [y for y in x.strip().split(',') for x in val_choice_file.readlines()]
-
-with open('../data_prep/top_50k/val_correct_choices.txt', 'r') as val_correct_file:
-	val_correct_choices = [x.strip() for x in val_correct_file.readlines()]
-
-# Test
-with open('../data_prep/top_50k/test_choices.txt', 'r') as test_choice_file:
-	all_test_choices = [y for y in x.strip().split(',') for x in test_choice_file.readlines()]
-
-with open('../data_prep/top_50k/test_correct_choices.txt', 'r') as test_correct_file:
-	test_correct_choices = [x.strip() for x in test_correct_file.readlines()]
-
-all_choices = set(all_test_choices + all_val_choices + all_train_choices)
-all_choices_corpus = list(all_choices)
-vocab_processor_choices = learn.preprocessing.VocabularyProcessor(len(all_choices_corpus))
-
-y_train_choices = np.array(list(vocab_processor_choices.fit_transform(all_train_choices)))
-y_val_choices = np.array(list(vocab_processor_choices.fit_transform(all_val_choices)))
-y_test_choices = np.array(list(vocab_processor_choices.fit_transform(all_test_choices)))
-
-y_train = np.array(list(vocab_processor_choices.fit_transform(train_correct_choices)))
-y_val = np.array(list(vocab_processor_choices.fit_transform(val_correct_choices)))
-y_test = np.array(list(vocab_processor_choices.fit_transform(test_correct_choices)))
-
+print ("Loading correct choices....")
+y_train = np.load(open('pickled_data/y_train', 'rb'))
+y_val = np.load(open('pickled_data/y_val', 'rb'))
+y_test = np.load(open('pickled_data/y_test', 'rb'))
 
 batch_accuracy_training = []
 val_set_accuracy = []
@@ -182,10 +105,10 @@ with tf.Graph().as_default():
 
 	with sess.as_default():
 		
-		stan_reader = StanfordReader(max_entities = len(all_choices_corpus))
+		stan_reader = StanfordReader(max_entities = 5)
 		# Define Training procedure
 		global_step = tf.Variable(0, name="global_step", trainable=False)
-		optimizer = tf.train.AdamOptimizer(learning_rate = 0.0005)
+		optimizer = tf.train.AdamOptimizer(learning_rate = 0.0000005)
 		grads_and_vars = optimizer.compute_gradients(stan_reader.loss)
 		train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
 
@@ -229,39 +152,66 @@ with tf.Graph().as_default():
 		saver = tf.train.Saver(tf.all_variables())
 
 		# Write vocabulary
-		vocab_processor.save(os.path.join(out_dir, "vocab"))
+		all_corpus_vocabulary.save(os.path.join(out_dir, "vocab"))
 
 		# Initialize all variables
 		sess.run(tf.initialize_all_variables())
 
 		
 		def train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch):
+			
+			seq_len_d = np.array([np.sum(doc != 0) for doc in x_batch_d])
+			seq_len_q = np.array([np.sum(ques != 0) for ques in x_batch_q])
+			max_seq_len_d = np.max(seq_len_d)
+			max_seq_len_q = np.max(seq_len_q)		
+
 			#A single training step
 			feed_dict = {
-			    stan_reader.seq_lens_d : np.array([np.sum(doc != 0) for doc in x_batch_d]),
-			    stan_reader.seq_lens_q : np.array([np.sum(ques != 0) for ques in x_batch_q]),
-			    stan_reader.input_d : x_batch_d,
-			    stan_reader.input_q : x_batch_q,
-			    stan_reader.input_a : y_batch,
+				stan_reader.seq_lens_d : seq_len_d,
+			    stan_reader.seq_lens_q : seq_len_q,
+			    stan_reader.input_d : tuple([doc[: max_seq_len_d] for doc in x_batch_d]),
+			    stan_reader.input_q : tuple([ques[: max_seq_len_q] for ques in x_batch_q]),
+			    stan_reader.input_a : np.array([y[0] for y in y_batch]),
 			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_batch_choices])
 			}
+	
+
+			print ("Ready for training....")
+
+			'''
 			_, step, summaries, loss, accuracy = sess.run(
-			    [train_op, global_step, train_summary_op, stan_reader.loss, stan_reader.accuracy],
+			    [train_op, train_summary_op, global_step, stan_reader.loss, stan_reader.accuracy],
 			    feed_dict)
+			'''
+
+			# Used the call below as summaries was throwing NaN error due to the variable 'loss' taking NaN values
+			_, step, loss, accuracy = sess.run(
+			    [train_op, global_step, stan_reader.loss, stan_reader.accuracy],
+			    feed_dict)
+
+
 			time_str = datetime.datetime.now().isoformat()
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
 
-			train_summary_writer.add_summary(summaries, step)
+
+			# Commenting out the summary log for the same NaN error mentioned above. 
+			#train_summary_writer.add_summary(summaries, step)
 
 		def dev_step(x_val_d, x_val_q, y_val_choices, y_val, writer=None):
+
+			seq_len_d = np.array([np.sum(doc != 0) for doc in x_val_d])
+			seq_len_q = np.array([np.sum(ques != 0) for ques in x_val_q])
+			max_seq_len_d = np.max(seq_len_d)
+			max_seq_len_q = np.max(seq_len_q)
+
 			# Evaluates model on a dev set
 			feed_dict = {
 				stan_reader.seq_lens_d : np.array([np.sum(doc != 0) for doc in x_val_d]),
 			    stan_reader.seq_lens_q : np.array([np.sum(ques != 0) for ques in x_val_q]),
-			    stan_reader.input_d : x_val_d,
-			    stan_reader.input_q : x_val_q,
-			    stan_reader.input_a : y_val,
-			    stan_reader.input_m : y_val_choices
+			    stan_reader.input_d : tuple([doc[: max_seq_len_d] for doc in x_val_d]),
+			    stan_reader.input_q : tuple([ques[: max_seq_len_q] for ques in x_val_q]),
+			    stan_reader.input_a : np.array([y[0] for y in y_val]),
+			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_val_choices])
 			}
 			step, summaries, loss, accuracy = sess.run(
 			    [global_step, dev_summary_op, stan_reader.loss, stan_reader.accuracy],
@@ -273,13 +223,12 @@ with tf.Graph().as_default():
 		
 
 		# Generate batches
-		batches = batch_iter(list(zip(x_train_d, x_train_q, y_train_choices, y_train)), FLAGS.batch_size, FLAGS.num_epochs)     
+		batches = batch_iter(list(zip(x_train_d[:64], x_train_q[:64], y_train_choices[:64], y_train[:64])), FLAGS.batch_size, FLAGS.num_epochs)     
 
 		for batch in batches:
 
 			x_batch_d, x_batch_q, y_batch_choices, y_batch = zip(*batch)
-
-
+			
 			batch_accuracy = train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch)
 
 

@@ -23,6 +23,7 @@ import tensorflow as tf
 import numpy as np
 from rnn_cell import GRUCell
 from rnn import bidirectional_rnn, rnn
+from attention import BilinearFunction
 
 def getFLAGS():
 	# Model Hyperparameters
@@ -70,11 +71,14 @@ class StanfordReader(object):
         self.input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
 
         mask_d = tf.cast(tf.sequence_mask(self.seq_lens_d), tf.int32)
-        mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
+	mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
+
+	self.mask_d = mask_d
+	self.mask_q = mask_q
 
         # Document and Query embeddings; One-hot-encoded answers
         masked_d = tf.mul(self.input_d, mask_d)
-        masked_q = tf.mul(self.input_q, mask_q)
+	masked_q = tf.mul(self.input_q, mask_q)
         one_hot_a = tf.one_hot(self.input_a, max_entities)
 
         # Buildling Graph (Network Layers)
@@ -133,3 +137,7 @@ class StanfordReader(object):
             correct_vector = tf.cast(tf.equal(tf.argmax(one_hot_a, 1), tf.argmax(prediction_probs, 1)), \
                 tf.float32, name="correct_vector")
             self.accuracy = tf.reduce_mean(correct_vector)
+
+
+    def get_mask_shape(self):
+	print (self.mask_d.get_shape(), self.mask_q.get_shape())
