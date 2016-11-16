@@ -1,12 +1,14 @@
+'''
+This module is to select only the top 50k tokens (words separated by space on either side except for the words at the beginning and end of sentence).
+
+The tokens that are not in the top 50k are replaced by a string 'oov'.
+'''
+
 import os
 import re
-#from nltk.corpus import stopwords
 import sys
-#from nltk.stem.porter import *
 
-#cachedStopWords = stopwords.words("english")
-
-def remove_stop_words_and_stem(string):
+def clean_input(string):
 	string = re.sub(r"[^@|A-Za-z0-9(),!?\'\`]", " ", string)
 	string = re.sub(r"\'s", " \'s", string)
 	string = re.sub(r"\'ve", " \'ve", string)
@@ -20,14 +22,6 @@ def remove_stop_words_and_stem(string):
 	string = re.sub(r"\)", " \) ", string)
 	string = re.sub(r"\?", " \? ", string)
 	string = re.sub(r"\s{2,}", " ", string)
-
-	#after_sw = ' '.join([word for word in string.split() if word not in cachedStopWords])
-
-	#after_sw = after_sw.strip().lower()
-
-	#port_stemmer = PorterStemmer()
-
-	#final_string = ' '.join([port_stemmer.stem(w) for w in after_sw.split()])
 
 	return string
 
@@ -43,7 +37,7 @@ with open(all_train_corpus, 'r') as f:
 	all_text = f.readlines()
 	for actual_text in all_text:
 
-		preprocessed = remove_stop_words_and_stem(actual_text.strip())
+		preprocessed = clean_input(actual_text.strip())
 
 		for w in preprocessed.split():
 			try:
@@ -53,7 +47,6 @@ with open(all_train_corpus, 'r') as f:
 
 
 print "Lenght of word count dictionary: ", len(word_count)
-print word_count['|||']
 
 k = 1
 top_50k = []
@@ -73,7 +66,7 @@ for tf in all_files:
 		with open('data/' + tf, 'r') as f:
 			all_text = f.readlines()
 			for actual_text in all_text:
-				preprocessed = remove_stop_words_and_stem(actual_text.strip())
+				preprocessed = clean_input(actual_text.strip())
 
 				#filtered_sentence = ' '.join([w if (w in top_50k) or (w == '|||') else 'oov' for w in preprocessed.split()])	
 				filtered_sentence = ''
