@@ -23,7 +23,7 @@ from collections import Counter
 import os
 
 def one_time_data_preparation():
-    
+
     # LOADING DOCUMENTS
 
     # Train
@@ -263,7 +263,8 @@ def build_vocab(sentences, pickle_path=None, max_words=50000):
     # leave 1 to delimiter |||
     vocab_dict = {w[0]: index + 2 for (index, w) in enumerate(ls)}
     if pickle_path:
-        pickle.dump(vocab_dict, open(os.path.join(pickle_path, "vocabulary_dict"), "wb"))
+        #pickle.dump(vocab_dict, open(os.path.join(pickle_path, "vocabulary_dict"), "wb"))
+        pickle.dump(vocab_dict, open("vocabulary_dict.p", "wb"))
     return vocab_dict
 
 def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
@@ -278,8 +279,9 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
     d_indices = []
     q_indices = []
     a_indices = []
+    entity_counts = []
     # Marks whether entity in the document
-    entity_mask = np.zeros((len(answers), len(entity_dict)))
+    #entity_mask = np.zeros((len(answers), len(entity_dict)))
 
     for i in range(len(answers)):
         d_words = documents[i].split(' ')
@@ -291,7 +293,17 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
             d_indices.append(seq1)
             q_indices.append(seq2)
             a_indices.append(entity_dict[answers[i]] if answers[i] in entity_dict else 0)
-            entity_mask[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1.0
+            entity_count = 0
+            for w in d_words:
+                if w in entity_dict:
+                    num = int(w[7:])
+                    if num > entity_count:
+                        entity_count = num
+            entity_counts.append(entity_count)
+            #print(d_words)
+            #print(entity_count)
+            #print([entity_dict[w] for w in d_words if w in entity_dict])
+            #entity_mask[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1
         if verbose and (i % 10000 == 0):
             print('Vectorization: processed {} / {}'.format(i, len(answers)))
 
@@ -304,10 +316,11 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
         d_indices = [d_indices[i] for i in sorted_index]
         q_indices = [q_indices[i] for i in sorted_index]
         a_indices = [a_indices[i] for i in sorted_index]
-        entity_mask = entity_mask[sorted_index]
+        entity_counts = [entity_counts[i] for i in sorted_index]
+        #entity_counts[sorted_index]
 
     # Change a_indices to one-hot vector form
-    return d_indices, q_indices, a_indices, entity_mask
+    return (d_indices, q_indices, a_indices, entity_counts)
 
 def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
     """
@@ -318,7 +331,7 @@ def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
     """
     data = np.array(data)
     data_size = len(data)
-    num_batches_per_epoch = int(len(data)/batch_size) + 1
+    num_batches_per_epoch = int(len(data)/batch_size)
     for epoch in range(num_epochs):
         # Shuffle the data at each epoch
         if shuffle:
@@ -330,6 +343,28 @@ def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield shuffled_data[start_index:end_index]
+
+
+def make_batches(num_epochs, batch_size, shuffle, dataset, data_path, max_words, max_examples=None):
+    file_path = os.path.join(data_path, dataset+".txt")
+    documents, questions, answers = load_data(file_path, max_examples=max_examples)
+    if dataset == "train":
+        vocabulary_dict = build_vocab(documents+questions, max_words=max_words)
+        entity_markers = list(set([w for w in vocabulary_dict.keys() if w.startswith('@entity')] + answers))
+        entity_markers = sorted(entity_markers)
+        entity_markers = ['<unk_entity>'] + entity_markers
+        entity_dict = {w: index for (index, w) in enumerate(entity_markers)}
+        pickle.dump(entity_dict, open("entity.p", "wb"))
+    else:
+        vocabulary_dict = pickle.load(open("vocabulary_dict.p", "rb"))
+        entity_dict = pickle.load(open("entity.p", "rb"))
+    # assuming num entities in dev and test <= num entities in train
+
+    d_indices, q_indices, a_indices, entity_counts = \
+        vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict)
+    train_data = list(zip(d_indices, q_indices, a_indices, entity_counts))
+    batches = batch_iter(train_data, num_epochs=num_epochs, batch_size=batch_size, shuffle=shuffle)
+    return batches
 
 if __name__ == "__main__":
     """

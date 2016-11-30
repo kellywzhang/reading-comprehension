@@ -26,31 +26,31 @@ from rnn import bidirectional_rnn, rnn
 from attention import BilinearFunction
 
 def getFLAGS():
-	# Model Hyperparameters
-	tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
-	tf.flags.DEFINE_integer("num_nodes", 16, "Number of nodes in fully connected layer")
-	tf.flags.DEFINE_float("learning_rate", 0.001, "Learning rate")
-	tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "Weight lambda on l2 regularization")
+    # Model Hyperparameters
+    tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
+    tf.flags.DEFINE_integer("num_nodes", 16, "Number of nodes in fully connected layer")
+    tf.flags.DEFINE_float("learning_rate", 0.001, "Learning rate")
+    tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "Weight lambda on l2 regularization")
 
-	# Training Parameters
-	tf.flags.DEFINE_integer("batch_size", 100, "Batch Size")
-	tf.flags.DEFINE_integer("num_epochs", 100, "Number of training epochs (default: 200)")
-	tf.flags.DEFINE_integer("patience", 800, "Minimum number of batches seen before early stopping")
-	tf.flags.DEFINE_integer("patience_increase", 6, "Number of dev evaluations of increasing loss before early stopping")
+    # Training Parameters
+    tf.flags.DEFINE_integer("batch_size", 100, "Batch Size")
+    tf.flags.DEFINE_integer("num_epochs", 100, "Number of training epochs (default: 200)")
+    tf.flags.DEFINE_integer("patience", 800, "Minimum number of batches seen before early stopping")
+    tf.flags.DEFINE_integer("patience_increase", 6, "Number of dev evaluations of increasing loss before early stopping")
 
-	# Display/Saving Parameters
-	tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 100)")
-	tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps (default: 100)")
+    # Display/Saving Parameters
+    tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 100)")
+    tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps (default: 100)")
 
-	# Print
-	FLAGS = tf.flags.FLAGS
-	FLAGS._parse_flags()
-	print("\nParameters:")
-	for attr, value in sorted(FLAGS.__flags.items()):
-	    print("{}={}".format(attr.upper(), value))
-	print("")
+    # Print
+    FLAGS = tf.flags.FLAGS
+    FLAGS._parse_flags()
+    print("\nParameters:")
+    for attr, value in sorted(FLAGS.__flags.items()):
+        print("{}={}".format(attr.upper(), value))
+    print("")
 
-	return FLAGS
+    return FLAGS
 
 class StanfordReader(object):
     """
@@ -73,12 +73,12 @@ class StanfordReader(object):
         self.input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
 
         mask_d = tf.cast(tf.sequence_mask(self.seq_lens_d), tf.int32)
-    	mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
-        mask_m = tf.cast(tf.sequence_mask(input_m), tf.float32)
+        mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
+        mask_m = tf.cast(tf.sequence_mask(self.input_m), tf.float32)
 
-        # Document and Query embeddings; One-hot-encoded answers
+        # Document and Query embddings; One-hot-encoded answers
         masked_d = tf.mul(self.input_d, mask_d)
-	    masked_q = tf.mul(self.input_q, mask_q)
+        masked_q = tf.mul(self.input_q, mask_q)
         one_hot_a = tf.one_hot(self.input_a, max_entities)
 
         # Buildling Graph (Network Layers)
@@ -94,8 +94,8 @@ class StanfordReader(object):
             question_embedding = tf.gather(W_embeddings, masked_q)
 
         with tf.variable_scope("bidirection_rnn"):
-            mask_d = tf.cast(tf.sequence_mask(seq_lens_d), tf.float32) #or float64?
-            mask_q = tf.cast(tf.sequence_mask(seq_lens_q), tf.float32)
+            mask_d = tf.cast(tf.sequence_mask(self.seq_lens_d), tf.float32) #or float64?
+            mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.float32)
 
             # Bidirectional RNNs for Document and Question
             self.forward_cell_d = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-D")
@@ -104,16 +104,16 @@ class StanfordReader(object):
             self.forward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-Q")
             self.backward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Backward-Q")
 
-            self.hidden_states_d, last_state_d = bidirectional_rnn(forward_cell_d, backward_cell_d, \
+            self.hidden_states_d, last_state_d = bidirectional_rnn(self.forward_cell_d, self.backward_cell_d, \
                 document_embedding, mask_d, concatenate=True)
 
-            hidden_states_q, self.last_state_q = bidirectional_rnn(forward_cell_q, backward_cell_q, \
+            hidden_states_q, self.last_state_q = bidirectional_rnn(self.forward_cell_q, self.backward_cell_q, \
                 question_embedding, mask_q, concatenate=True)
 
         with tf.variable_scope("attention"):
             # Attention Layer
             self.attention = BilinearFunction(attending_size=hidden_size*2, attended_size=hidden_size*2)
-            self.alpha_weights, self.attend_result = attention(attending=last_state_q, attended=hidden_states_d, \
+            self.alpha_weights, self.attend_result = self.attention(attending=self.last_state_q, attended=self.hidden_states_d, \
                 time_mask=mask_d)
 
         with tf.variable_scope("prediction"):
@@ -122,7 +122,7 @@ class StanfordReader(object):
             self.b_predict = tf.get_variable(name="predict_bias", shape=[max_entities],
                 initializer=tf.constant_initializer(0.0))
             # Dimensions (batch_size x max_entities)
-            predict_probs = (tf.matmul(attend_result, W_predict) + b_predict) * mask_m
+            predict_probs = (tf.matmul(self.attend_result, self.W_predict) + self.b_predict) * mask_m
 
             # Custom Softmax b/c need to use time_mask --------------------
             # Also numerical stability:
@@ -145,4 +145,4 @@ class StanfordReader(object):
 
 
     def get_mask_shape(self):
-	print (self.mask_d.get_shape(), self.mask_q.get_shape())
+           print (self.mask_d.get_shape(), self.mask_q.get_shape())

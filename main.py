@@ -33,10 +33,21 @@ FLAGS = base_architecture.getFLAGS()
 
 # Load Data
 # =================================================================================
+data_path = "/Users/kellyzhang/Documents/ReadingComprehension/DeepMindDataset/cnn/questions"
+"""
+documents, questions, answers = data_utils.load_data(train_path, max_examples=10)
+vocabulary_dict = data_utils.build_vocab(documents+questions, max_words=10000)
+entity_markers = list(set([w for w in vocabulary_dict.keys() if w.startswith('@entity')] + answers))
+entity_markers = sorted(entity_markers)
+entity_markers = ['<unk_entity>'] + entity_markers
+entity_dict = {w: index for (index, w) in enumerate(entity_markers)}
+d_indices, q_indices, a_indices, entity_counts = \
+    data_utils.vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict)
+train_data = list(zip(d_indices, q_indices, a_indices, entity_counts))
+batches = data_utils.batch_iter(train_data, num_epochs=1, batch_size=2, shuffle=False)
+"""
 
-# TODO: LOAD YOUR OWN DATA
-from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+batches = make_batches(num_epochs=1, batch_size=2, shuffle=False, dataset="train", data_path=data_path, max_words=10000, max_examples=100)
 
 x_dev, y_dev = mnist.validation.next_batch(5000)
 

@@ -30,7 +30,7 @@ class BilinearFunction(object):
               initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
 
           # Dimensions (batch x attended_size)
-          attending_tensor = tf.matmul(attending, W_bilinear)
+          attending_tensor = tf.matmul(attending, self.W_bilinear)
           attending_tensor = tf.reshape(attending_tensor, [batch_size, attended_size, 1])
 
           # Now take dot products of attending tensor with each timestep of attended tensor

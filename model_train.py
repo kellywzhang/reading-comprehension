@@ -73,23 +73,23 @@ print ("Loading documents....")
 
 x_train_d = np.load(open('pickled_data/x_train_d', 'rb'))
 x_val_d = np.load(open('pickled_data/x_val_d', 'rb'))
-x_test_d = np.load(open('pickled_data/x_test_d', 'rb'))
+#x_test_d = np.load(open('pickled_data/x_test_d', 'rb'))
 
 print ("Loading questions....")
 
 x_train_q = np.load(open('pickled_data/x_train_q', 'rb'))
 x_val_q = np.load(open('pickled_data/x_val_q', 'rb'))
-x_test_q = np.load(open('pickled_data/x_test_q', 'rb'))
+#x_test_q = np.load(open('pickled_data/x_test_q', 'rb'))
 
 print ("Loading choices....")
 y_train_choices = np.load(open('pickled_data/y_train_choices', 'rb'))
 y_val_choices = np.load(open('pickled_data/y_val_choices', 'rb'))
-y_test_choices = np.load(open('pickled_data/y_test_choices', 'rb'))
+#y_test_choices = np.load(open('pickled_data/y_test_choices', 'rb'))
 
 print ("Loading correct choices....")
 y_train = np.load(open('pickled_data/y_train', 'rb'))
 y_val = np.load(open('pickled_data/y_val', 'rb'))
-y_test = np.load(open('pickled_data/y_test', 'rb'))
+#y_test = np.load(open('pickled_data/y_test', 'rb'))
 
 batch_accuracy_training = []
 val_set_accuracy = []
@@ -104,8 +104,8 @@ with tf.Graph().as_default():
 	sess = tf.Session(config=session_conf)
 
 	with sess.as_default():
-		
-		stan_reader = StanfordReader(max_entities = 5)
+
+		stan_reader = StanfordReader(max_entities=5)
 		# Define Training procedure
 		global_step = tf.Variable(0, name="global_step", trainable=False)
 		optimizer = tf.train.AdamOptimizer(learning_rate = 0.0000005)
@@ -157,13 +157,13 @@ with tf.Graph().as_default():
 		# Initialize all variables
 		sess.run(tf.initialize_all_variables())
 
-		
+
 		def train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch):
-			
+
 			seq_len_d = np.array([np.sum(doc != 0) for doc in x_batch_d])
 			seq_len_q = np.array([np.sum(ques != 0) for ques in x_batch_q])
 			max_seq_len_d = np.max(seq_len_d)
-			max_seq_len_q = np.max(seq_len_q)		
+			max_seq_len_q = np.max(seq_len_q)
 
 			#A single training step
 			feed_dict = {
@@ -174,7 +174,7 @@ with tf.Graph().as_default():
 			    stan_reader.input_a : np.array([y[0] for y in y_batch]),
 			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_batch_choices])
 			}
-	
+
 
 			print ("Ready for training....")
 
@@ -194,7 +194,7 @@ with tf.Graph().as_default():
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
 
 
-			# Commenting out the summary log for the same NaN error mentioned above. 
+			# Commenting out the summary log for the same NaN error mentioned above.
 			#train_summary_writer.add_summary(summaries, step)
 
 		def dev_step(x_val_d, x_val_q, y_val_choices, y_val, writer=None):
@@ -220,17 +220,14 @@ with tf.Graph().as_default():
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
 			if writer:
 			    writer.add_summary(summaries, step)
-		
+
 
 		# Generate batches
-		batches = batch_iter(list(zip(x_train_d[:64], x_train_q[:64], y_train_choices[:64], y_train[:64])), FLAGS.batch_size, FLAGS.num_epochs)     
+		batches = batch_iter(list(zip(x_train_d[:64], x_train_q[:64], y_train_choices[:64], y_train[:64])), FLAGS.batch_size, FLAGS.num_epochs)
 
 		for batch in batches:
-
 			x_batch_d, x_batch_q, y_batch_choices, y_batch = zip(*batch)
-			
 			batch_accuracy = train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch)
-
 
 			current_step = tf.train.global_step(sess, global_step)
 			if current_step % FLAGS.evaluate_every == 0:
@@ -240,4 +237,3 @@ with tf.Graph().as_default():
 			if current_step % FLAGS.checkpoint_every == 0:
 			    path = saver.save(sess, checkpoint_prefix, global_step=current_step)
 			    print("Saved model checkpoint to {}\n".format(path))
-
