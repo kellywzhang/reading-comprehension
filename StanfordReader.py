@@ -21,7 +21,9 @@ Credits: Attentive Reader model developed by https://arxiv.org/pdf/1506.03340.pd
 
 import tensorflow as tf
 import numpy as np
-import rnn_cell, rnn
+from rnn_cell import GRUCell
+from rnn import bidirectional_rnn, rnn
+from attention import BilinearFunction
 
 def getFLAGS():
 	# Model Hyperparameters
@@ -55,33 +57,32 @@ class StanfordReader(object):
     Purpose:
     Instances of this class run the whole StanfordReader model.
     """
-	def __init__(self, max_entities, hidden_size=128, vocab_size=50000, \
-        embedding_dim=100, batch_size=32):
+    def __init__(self, max_entities, hidden_size=128, vocab_size=50000, embedding_dim=100, batch_size=32):
 
-		tf.set_random_seed(1234)
+        tf.set_random_seed(1234)
 
         # Placeholders
         # can add assert statements to ensure shared None dimensions are equal (batch_size)
 
-        # unnecessary if pad with negatives
-        seq_lens_d = tf.placeholder(tf.int32, [None, ], name="seq_lens_d")
-        seq_lens_q = tf.placeholder(tf.int32, [None, ], name="seq_lens_q")
-        input_d = tf.placeholder(tf.int32, [None, None], name="input_d")
-        input_q = tf.placeholder(tf.int32, [None, None], name="input_q")
-        input_a = tf.placeholder(tf.int32, [None, ], name="input_a")
-        input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
+        # seq lens unnecessary if pad with negatives
+        self.seq_lens_d = tf.placeholder(tf.int32, [None, ], name="seq_lens_d")
+        self.seq_lens_q = tf.placeholder(tf.int32, [None, ], name="seq_lens_q")
+        self.input_d = tf.placeholder(tf.int32, [None, None], name="input_d")
+        self.input_q = tf.placeholder(tf.int32, [None, None], name="input_q")
+        self.input_a = tf.placeholder(tf.int32, [None, ], name="input_a")
+        self.input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
 
-        mask_d = tf.cast(tf.sequence_mask(seq_lens_d), tf.int32)
-        mask_q = tf.cast(tf.sequence_mask(seq_lens_q), tf.int32)
+        mask_d = tf.cast(tf.sequence_mask(self.seq_lens_d), tf.int32)
+    	mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
         mask_m = tf.cast(tf.sequence_mask(input_m), tf.float32)
 
         # Document and Query embeddings; One-hot-encoded answers
-        masked_d = tf.mul(input_d, mask_d)
-        masked_q = tf.mul(input_q, mask_q)
-        one_hot_a = tf.one_hot(input_a, max_entities)
+        masked_d = tf.mul(self.input_d, mask_d)
+	    masked_q = tf.mul(self.input_q, mask_q)
+        one_hot_a = tf.one_hot(self.input_a, max_entities)
 
         # Buildling Graph (Network Layers)
-		# ==================================================
+        # ==================================================
         with tf.variable_scope("embedding"):
             W_embeddings = tf.get_variable(shape=[vocab_size, embedding_dim], \
                                            initializer=tf.random_uniform_initializer(-0.01, 0.01),\
@@ -141,3 +142,7 @@ class StanfordReader(object):
             correct_vector = tf.cast(tf.equal(tf.argmax(one_hot_a, 1), tf.argmax(predict_probs_normalized, 1)), \
                 tf.float32, name="correct_vector")
             self.accuracy = tf.reduce_mean(correct_vector)
+
+
+    def get_mask_shape(self):
+	print (self.mask_d.get_shape(), self.mask_q.get_shape())

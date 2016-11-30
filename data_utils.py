@@ -22,6 +22,131 @@ import pickle
 from collections import Counter
 import os
 
+def one_time_data_preparation():
+    
+    # LOADING DOCUMENTS
+
+    # Train
+    with open('../data_prep/top_50k/train_documents.txt', 'r') as train_d_file:
+        train_d = [x.strip() for x in train_d_file.readlines()]
+
+    print ("Number of training documents: ", len(train_d))
+
+    # Validation
+    with open('../data_prep/top_50k/val_documents.txt', 'r') as val_d_file:
+        val_d = [x.strip() for x in val_d_file.readlines()]
+
+    print ("Number of validation documents: ", len(val_d))
+
+    # Test
+    with open('../data_prep/top_50k/test_documents.txt', 'r') as test_d_file:
+        test_d = [x.strip() for x in test_d_file.readlines()]
+
+    print ("Number of test documents: ", len(test_d))
+
+
+    # LOADING QUESTIONS
+
+    # Train
+    with open('../data_prep/top_50k/train_questions.txt', 'r') as train_q_file:
+        train_q = [x.strip() for x in train_q_file.readlines()]
+
+    print("Number of training questions: ", len(train_q))
+
+    # Validation
+    with open('../data_prep/top_50k/val_questions.txt', 'r') as val_q_file:
+        val_q = [x.strip() for x in val_q_file.readlines()]
+
+    print ("Number of validation questions: ", len(val_q))
+
+
+    # Test
+    with open('../data_prep/top_50k/test_questions.txt', 'r') as test_q_file:
+        test_q = [x.strip() for x in test_q_file.readlines()]
+
+    print ("Number of test questions: ", len(test_q))
+
+
+    # Build documents vocabulary
+    all_corpus_d = train_d + val_d + test_d
+
+    # Build questions vocabulary
+    all_corpus_q = train_q + val_q + test_q
+
+    # Preparing the answers
+
+    # Train
+    with open('../data_prep/top_50k/train_choices_ent.txt', 'r') as train_choice_file:
+        all_train_choices = [x.strip().replace(",", ' ') for x in train_choice_file.readlines()]
+
+    with open('../data_prep/top_50k/train_correct_choices_ent.txt', 'r') as train_correct_file:
+        train_correct_choices = [x.strip() for x in train_correct_file.readlines()]
+
+    # Validation
+    with open('../data_prep/top_50k/val_choices_ent.txt', 'r') as val_choice_file:
+        all_val_choices = [x.strip().replace(",", ' ') for x in val_choice_file.readlines()]
+
+    with open('../data_prep/top_50k/val_correct_choices_ent.txt', 'r') as val_correct_file:
+        val_correct_choices = [x.strip() for x in val_correct_file.readlines()]
+
+    # Test
+    with open('../data_prep/top_50k/test_choices_ent.txt', 'r') as test_choice_file:
+        all_test_choices = [x.strip().replace(",", ' ') for x in test_choice_file.readlines()]
+
+    with open('../data_prep/top_50k/test_correct_choices_ent.txt', 'r') as test_correct_file:
+        test_correct_choices = [x.strip() for x in test_correct_file.readlines()]
+
+    all_choices = all_test_choices + all_val_choices + all_train_choices
+    max_choices = max([len(x.split(" ")) for x in all_choices])
+    #vocab_processor_choices = learn.preprocessing.VocabularyProcessor(max_choices)
+
+    all_corpus = all_corpus_d + all_corpus_q
+
+    max_vocab = max([len(x.split(" ")) for x in all_corpus])
+
+    # Used only for the first time and the data is stored in pickle files for using later.
+
+    all_corpus_vocabulary = learn.preprocessing.VocabularyProcessor(max_vocab)
+    # Saving the vocabulary for future purposes
+    cPickle.dump(all_corpus_vocabulary, open('pickled_data/all_corpus_vocab.p', 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
+
+    x_train_d = np.array(list(all_corpus_vocabulary.fit_transform(train_d)))
+    np.save(open('pickled_data/x_train_d', 'wb'), x_train_d)
+
+    x_val_d = np.array(list(all_corpus_vocabulary.fit_transform(val_d)))
+    np.save(open('pickled_data/x_val_d', 'wb'), x_val_d)
+
+    x_test_d = np.array(list(all_corpus_vocabulary.fit_transform(test_d)))
+    np.save(open('pickled_data/x_test_d', 'wb'), x_test_d)
+
+    x_train_q = np.array(list(all_corpus_vocabulary.fit_transform(train_q)))
+    np.save(open('pickled_data/x_train_q', 'wb'), x_train_q)
+
+    x_val_q = np.array(list(all_corpus_vocabulary.fit_transform(val_q)))
+    np.save(open('pickled_data/x_val_q', 'wb'), x_val_q)
+
+    x_test_q = np.array(list(all_corpus_vocabulary.fit_transform(test_q)))
+    np.save(open('pickled_data/x_test_q', 'wb'), x_test_q)
+
+    y_train_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_train_choices)))
+    np.save(open('pickled_data/y_train_choices', 'wb'), y_train_choices)
+
+    y_val_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_val_choices)))
+    np.save(open('pickled_data/y_val_choices', 'wb'), y_val_choices)
+
+    y_test_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_test_choices)))
+    np.save(open('pickled_data/y_test_choices', 'wb'), y_test_choices)
+
+    y_train = np.array(list(all_corpus_vocabulary.fit_transform(train_correct_choices)))
+    np.save(open('pickled_data/y_train', 'wb'), y_train)
+
+    y_val = np.array(list(all_corpus_vocabulary.fit_transform(val_correct_choices)))
+    np.save(open('pickled_data/y_val', 'wb'), y_val)
+
+    y_test = np.array(list(all_corpus_vocabulary.fit_transform(test_correct_choices)))
+    np.save(open('pickled_data/y_test', 'wb'), y_test)
+
+
 def make_data_file(in_file_path, write_file, relabeling=True):
     """
     Purpose:
