@@ -18,13 +18,15 @@ class BilinearFunction(object):
 
     # Expect dimensions: attending (batch x attending_size),
         # attended (batch x time x attended_size) - time could be other dim value
-    def __call__(self, attending, attended, seq_lens, batch_size, scope=None):
+    def __call__(self, attending, attended, time_mask, scope=None):
       with tf.variable_scope(self._scope or type(self).__name__):  # "BilinearFunction"
           attending_size = self._attending_size
           attended_size= self._attended_size
 
+          batch_size = tf.shape(attended)[0]
+
           # different initializer?
-          W_bilinear = tf.get_variable(name="bilinear_attention", shape=[attending_size, attended_size], \
+          self.W_bilinear = tf.get_variable(name="bilinear_attention", shape=[attending_size, attended_size], \
               initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
 
           # Dimensions (batch x attended_size)
@@ -35,31 +37,31 @@ class BilinearFunction(object):
           # Should return matrix of attention weights with dimensions (batch x time)
 
           # multiplies each slice with each other respective slice - EXPLAIN BETTER
-          dot_prod = tf.batch_matmul(attended, attending_tensor)
+          dot_prod = tf.batch_matmul(attended, attending_tensor) * time_mask
           # Should return matrix of attention weights with dimensions (batch x time)
           dot_prod = tf.squeeze(dot_prod)
-
-          # Dimensions (batch x time)
-          seq_len_mask = tf.cast(tf.sequence_mask(seq_lens), tf.float32)
 
           # Custom Softmax b/c need to use time_mask --------------------
           # Also numerical stability: alpha_weights = tf.nn.softmax(dot_prod)
 
-          numerator = tf.exp(dot_prod) * seq_len_mask #batch x time
-          denom = tf.reduce_sum(tf.exp(dot_prod) * seq_len_mask, 1)
+          # e_x = exp(x - x.max(axis=1))
+          # out = e_x / e_x.sum(axis=1)
+          numerator = tf.exp(tf.sub(dot_prod, tf.expand_dims(tf.reduce_max(dot_prod, 1), -1))) * time_mask
+          denom = tf.reduce_sum(numerator, 1)
 
           # Transpose so broadcasting scalar division works properly
           # Dimensions (batch x time)
-          alpha_weights = tf.transpose(tf.div(tf.transpose(numerator), denom))
+          #alpha_weights = tf.transpose(tf.div(tf.transpose(numerator), denom))
+          alpha_weights = tf.div(numerator, tf.expand_dims(denom, 1))
 
           # Find weighted sum of attended tensor using alpha_weights
           # attended dimensions: (batch x time x attended_size)
-          tf.mul(attended, alpha_weights)
+          attended_weighted = tf.mul(attended, tf.expand_dims(alpha_weights, -1))
 
           # Again must permute axes so broadcasting scalar multiplication works properly
-          attended_transposed = tf.transpose(attended, perm=[2,0,1])
-          attended_weighted_transposed = tf.mul(attended_transposed, alpha_weights)
-          attended_weighted = tf.transpose(attended_weighted_transposed, perm=[1,2,0])
+          #attended_transposed = tf.transpose(attended, perm=[2,0,1])
+          #attended_weighted_transposed = tf.mul(attended_transposed, alpha_weights)
+          #attended_weighted = tf.transpose(attended_weighted_transposed, perm=[1,2,0])
           # attend_result dimensions (batch x attended_size)
           attend_result = tf.reduce_sum(attended_weighted, 1)
 

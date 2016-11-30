@@ -92,6 +92,9 @@ nn = BaseNN( # TODO: DEFINE YOUR OWN NETWORK
 optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate) # TODO: CHOOSE YOUR FAVORITE OPTIMZER
 global_step = tf.Variable(0, name='global_step', trainable=False)
 grads_and_vars = optimizer.compute_gradients(nn.loss)
+if gradient_clip:
+    pass
+# capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
 train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
 
 train_summary_op, dev_summary_op, train_summary_writer, dev_summary_writer, timestamp, checkpoint_prefix = \

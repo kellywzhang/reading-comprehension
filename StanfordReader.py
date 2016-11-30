@@ -63,6 +63,8 @@ class StanfordReader(object):
 
         # Placeholders
         # can add assert statements to ensure shared None dimensions are equal (batch_size)
+
+        # seq lens unnecessary if pad with negatives
         self.seq_lens_d = tf.placeholder(tf.int32, [None, ], name="seq_lens_d")
         self.seq_lens_q = tf.placeholder(tf.int32, [None, ], name="seq_lens_q")
         self.input_d = tf.placeholder(tf.int32, [None, None], name="input_d")
@@ -71,14 +73,12 @@ class StanfordReader(object):
         self.input_m = tf.placeholder(tf.int32, [None, ], name="input_m")
 
         mask_d = tf.cast(tf.sequence_mask(self.seq_lens_d), tf.int32)
-	mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
-
-	self.mask_d = mask_d
-	self.mask_q = mask_q
+    	mask_q = tf.cast(tf.sequence_mask(self.seq_lens_q), tf.int32)
+        mask_m = tf.cast(tf.sequence_mask(input_m), tf.float32)
 
         # Document and Query embeddings; One-hot-encoded answers
         masked_d = tf.mul(self.input_d, mask_d)
-	masked_q = tf.mul(self.input_q, mask_q)
+	    masked_q = tf.mul(self.input_q, mask_q)
         one_hot_a = tf.one_hot(self.input_a, max_entities)
 
         # Buildling Graph (Network Layers)
@@ -94,47 +94,52 @@ class StanfordReader(object):
             question_embedding = tf.gather(W_embeddings, masked_q)
 
         with tf.variable_scope("bidirection_rnn"):
+            mask_d = tf.cast(tf.sequence_mask(seq_lens_d), tf.float32) #or float64?
+            mask_q = tf.cast(tf.sequence_mask(seq_lens_q), tf.float32)
+
             # Bidirectional RNNs for Document and Question
-            forward_cell_d = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-D")
-            backward_cell_d = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Backward-D")
+            self.forward_cell_d = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-D")
+            self.backward_cell_d = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Backward-D")
 
-            forward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-Q")
-            backward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Backward-Q")
+            self.forward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Forward-Q")
+            self.backward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Backward-Q")
 
-            hidden_states_d, last_state_d = bidirectional_rnn(forward_cell_d, backward_cell_d, \
-                document_embedding, self.seq_lens_d, batch_size, embedding_dim, concatenate=True)
+            self.hidden_states_d, last_state_d = bidirectional_rnn(forward_cell_d, backward_cell_d, \
+                document_embedding, mask_d, concatenate=True)
 
-            hidden_states_q, last_state_q = bidirectional_rnn(forward_cell_q, backward_cell_q, \
-                question_embedding, self.seq_lens_q, batch_size, embedding_dim, concatenate=True)
+            hidden_states_q, self.last_state_q = bidirectional_rnn(forward_cell_q, backward_cell_q, \
+                question_embedding, mask_q, concatenate=True)
 
         with tf.variable_scope("attention"):
             # Attention Layer
-            attention = BilinearFunction(attending_size=hidden_size*2, attended_size=hidden_size*2)
-            alpha_weights, attend_result = attention(attending=last_state_q, attended=hidden_states_d, \
-                seq_lens=self.seq_lens_d, batch_size=batch_size)
+            self.attention = BilinearFunction(attending_size=hidden_size*2, attended_size=hidden_size*2)
+            self.alpha_weights, self.attend_result = attention(attending=last_state_q, attended=hidden_states_d, \
+                time_mask=mask_d)
 
         with tf.variable_scope("prediction"):
-            W_predict = tf.get_variable(name="predict_weight", shape=[hidden_size*2, max_entities], \
+            self.W_predict = tf.get_variable(name="predict_weight", shape=[hidden_size*2, max_entities], \
                 initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
-            b_predict = tf.get_variable(name="predict_bias", shape=[max_entities],
+            self.b_predict = tf.get_variable(name="predict_bias", shape=[max_entities],
                 initializer=tf.constant_initializer(0.0))
-            # Dimensions (batch_size x state_size/hidden_size*2)
-            prediction_probs_unnormalized = tf.matmul(attend_result, W_predict) + b_predict
+            # Dimensions (batch_size x max_entities)
+            predict_probs = (tf.matmul(attend_result, W_predict) + b_predict) * mask_m
 
             # Custom Softmax b/c need to use time_mask --------------------
             # Also numerical stability:
-            mask_m = tf.cast(tf.sequence_mask(self.input_m), tf.float32)
-            numerator = tf.exp(prediction_probs_unnormalized) * mask_m
-            denom = tf.reduce_sum(tf.exp(prediction_probs_unnormalized) * mask_m, 1)
+
+            # e_x = exp(x - x.max(axis=1))
+            # out = e_x / e_x.sum(axis=1)
+            numerator = tf.exp(tf.sub(predict_probs, tf.expand_dims(tf.reduce_max(predict_probs, 1), -1))) * mask_m
+            denom = tf.reduce_sum(numerator, 1)
 
             # Transpose so broadcasting scalar division works properly
-            # Dimensions (batch x time)
-            prediction_probs = tf.transpose(tf.div(tf.transpose(numerator), denom))
-            likelihoods = tf.reduce_sum(tf.mul(prediction_probs, one_hot_a), 1)
+            # Dimensions (batch x max_entities)
+            predict_probs_normalized = tf.transpose(tf.div(tf.transpose(numerator), denom))
+            likelihoods = tf.reduce_sum(tf.mul(predict_probs_normalized, one_hot_a), 1)
             log_likelihoods = tf.log(likelihoods)
             # Negative log-likelihood loss
             self.loss = tf.mul(tf.reduce_sum(log_likelihoods), -1)
-            correct_vector = tf.cast(tf.equal(tf.argmax(one_hot_a, 1), tf.argmax(prediction_probs, 1)), \
+            correct_vector = tf.cast(tf.equal(tf.argmax(one_hot_a, 1), tf.argmax(predict_probs_normalized, 1)), \
                 tf.float32, name="correct_vector")
             self.accuracy = tf.reduce_mean(correct_vector)
 
