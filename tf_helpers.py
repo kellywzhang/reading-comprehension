@@ -3,8 +3,9 @@ from tensorflow.contrib import learn
 import numpy as np
 import time
 import datetime
+import os
 
-def save_summaries(sess, loss, accuracy, grads_and_vars=None, FLAGS=None, vocab_processor=None):
+def save_summaries(sess, summary_var_list, grads_and_vars=None, FLAGS=None, timestamp=None):
 	"""
 	Creates train and validation summary writers for TensorBoard; Also creates checkpoints
 	"""
@@ -17,19 +18,21 @@ def save_summaries(sess, loss, accuracy, grads_and_vars=None, FLAGS=None, vocab_
 				sparsity_summary = tf.scalar_summary("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
 				grad_summaries.append(grad_hist_summary)
 				grad_summaries.append(sparsity_summary)
-		grad_summaries_merged = tf.merge_summary(grad_summaries)
+		if len(grad_summaries) > 0:
+			grad_summaries_merged = tf.merge_summary(grad_summaries)
 
 	# Output directory for models and summaries
-	timestamp = str(int(time.time()))
+	if not timestamp:
+		timestamp = str(int(time.time()))
 	out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
 	print("Writing to {}\n".format(out_dir))
 
 	# Summaries for loss and accuracy
-	loss_summary = tf.scalar_summary("loss", loss)
-	acc_summary = tf.scalar_summary("accuracy", accuracy)
+	loss_summary = tf.scalar_summary("loss", summary_var_list[0])
+	acc_summary = tf.scalar_summary("accuracy", summary_var_list[1])
 
 	# Train Summaries
-	train_summary_op = tf.merge_summary([loss_summary, acc_summary, grad_summaries_merged]) if grads_and_vars else tf.merge_summary([loss_summary, acc_summary])
+	train_summary_op = tf.merge_summary([loss_summary, acc_summary, grad_summaries_merged]) if grads_and_vars and len(grad_summaries) > 0 else tf.merge_summary([loss_summary, acc_summary])
 	train_summary_dir = os.path.join(out_dir, "summaries", "train")
 	train_summary_writer = tf.train.SummaryWriter(logdir=train_summary_dir, graph=sess.graph)
 
@@ -46,13 +49,9 @@ def save_summaries(sess, loss, accuracy, grads_and_vars=None, FLAGS=None, vocab_
 
 	# Save parameters
 	if FLAGS:
-		with open(os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp, "Paramters.txt")), "w") as text_file:
+		with open(os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp, "Parameters.txt")), "w") as text_file:
 			for attr, value in sorted(FLAGS.__flags.items()):
 				text_file.write("{}={}\n".format(attr.upper(), value))
-
-	# Write vocabulary
-	if vocab_processor:
-		vocab_processor.save(os.path.join(out_dir, "vocab"))
 
 	return (train_summary_op, dev_summary_op, train_summary_writer, dev_summary_writer, timestamp, checkpoint_prefix)
 
