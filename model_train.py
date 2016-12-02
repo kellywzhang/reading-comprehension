@@ -7,8 +7,8 @@ import time
 import datetime
 from StanfordReader import StanfordReader
 from tensorflow.contrib import learn
-import cPickle
 import data_utils
+import cPickle
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):
     """
@@ -65,29 +65,29 @@ print("Loading data...")
 #data_utils.one_time_data_preparation()
 
 # Loading all data points from pickle files
-all_corpus_vocabulary = cPickle.load(open('corrected_data/all_corpus_vocab.p', 'rb'))
+all_corpus_vocabulary = cPickle.load(open('/scratch/vdn207/qa_project/final_saved_data/all_corpus_vocab.p', 'rb'))
 
 print ("Loading documents....")
 
-x_train_d = np.load(open('corrected_data/x_train_d', 'rb'))
-x_val_d = np.load(open('corrected_data/x_val_d', 'rb'))
-x_test_d = np.load(open('corrected_data/x_test_d', 'rb'))
+x_train_d = np.load(open('/scratch/vdn207/qa_project/final_saved_data/x_train_d', 'rb'))
+x_val_d = np.load(open('/scratch/vdn207/qa_project/final_saved_data/x_val_d', 'rb'))
+x_test_d = np.load(open('/scratch/vdn207/qa_project/final_saved_data/x_test_d', 'rb'))
 
 print ("Loading questions....")
 
-x_train_q = np.load(open('corrected_data/x_train_q', 'rb'))
-x_val_q = np.load(open('corrected_data/x_val_q', 'rb'))
-x_test_q = np.load(open('corrected_data/x_test_q', 'rb'))
+x_train_q = np.load(open('/scratch/vdn207/qa_project/final_saved_data/x_train_q', 'rb'))
+x_val_q = np.load(open('/scratch/vdn207/qa_project/final_saved_data/x_val_q', 'rb'))
+x_test_q = np.load(open('/scratch/vdn207/qa_project/final_saved_data/x_test_q', 'rb'))
 
 print ("Loading choices....")
-y_train_choices = np.load(open('corrected_data/y_train_choices', 'rb'))
-y_val_choices = np.load(open('corrected_data/y_val_choices', 'rb'))
-y_test_choices = np.load(open('corrected_data/y_test_choices', 'rb'))
+y_train_choices = np.load(open('/scratch/vdn207/qa_project/final_saved_data/y_train_choices', 'rb'))
+y_val_choices = np.load(open('/scratch/vdn207/qa_project/final_saved_data/y_val_choices', 'rb'))
+y_test_choices = np.load(open('/scratch/vdn207/qa_project/final_saved_data/y_test_choices', 'rb'))
 
 print ("Loading correct choices....")
-y_train = np.load(open('corrected_data/y_train', 'rb'))
-y_val = np.load(open('corrected_data/y_val', 'rb'))
-y_test = np.load(open('corrected_data/y_test', 'rb'))
+y_train = np.load(open('/scratch/vdn207/qa_project/final_saved_data/y_train', 'rb'))
+y_val = np.load(open('/scratch/vdn207/qa_project/final_saved_data/y_val', 'rb'))
+y_test = np.load(open('/scratch/vdn207/qa_project/final_saved_data/y_test', 'rb'))
 
 print ("Train D: ", x_train_d.shape)
 print ("Val D: ", x_val_d.shape)
