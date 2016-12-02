@@ -37,8 +37,9 @@ class BilinearFunction(object):
           # Should return matrix of attention weights with dimensions (batch x time)
 
           # multiplies each slice with each other respective slice - EXPLAIN BETTER
-          dot_prod = tf.batch_matmul(attended, attending_tensor) * time_mask
-          # Should return matrix of attention weights with dimensions (batch x time)
+          dot_prod = tf.squeeze(tf.batch_matmul(attended, attending_tensor)) * time_mask
+
+	  # Should return matrix of attention weights with dimensions (batch x time)
           dot_prod = tf.squeeze(dot_prod)
 
           # Custom Softmax b/c need to use time_mask --------------------
