@@ -224,7 +224,7 @@ def make_data_file(in_file_path, write_file, relabeling=True):
 
     return (documents, questions, answers)
 
-def load_data(in_file_path, max_examples=None):
+def load_data_text(in_file_path, max_examples=None):
     """
     Purpose:
     Loads CNN / Daily Mail data from {train | dev | test}.txt
@@ -261,7 +261,7 @@ def load_data(in_file_path, max_examples=None):
     f.close()
     return (documents, questions, answers)
 
-def build_vocab(sentences, pickle_path=None, max_words=50000):
+def build_vocab(sentences, pickle_path=True, max_words=50000):
     """
     Purpose:
     Builds a dict (word, index) for `max_words` number of words in `sentences`.
@@ -272,7 +272,7 @@ def build_vocab(sentences, pickle_path=None, max_words=50000):
         for w in sent.split(' '):
             word_count[w] += 1
 
-    ls = word_count.most_common(max_words)
+    ls = word_count.most_common(max_words-2)
 
     # leave 0 to UNK
     # leave 1 to delimiter |||
@@ -295,6 +295,7 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
     q_indices = []
     a_indices = []
     entity_counts = []
+    print(entity_dict)
     # Marks whether entity in the document
     #entity_mask = np.zeros((len(answers), len(entity_dict)))
 
@@ -315,8 +316,10 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
                     if num > entity_count:
                         entity_count = num
             entity_counts.append(entity_count)
-            #print(d_words)
-            #print(entity_count)
+            # print(d_words)
+            # print(entity_count)
+            # print(answers[i])
+            # print(entity_dict[answers[i]])
             #print([entity_dict[w] for w in d_words if w in entity_dict])
             #entity_mask[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1
         if verbose and (i % 10000 == 0):
@@ -359,14 +362,13 @@ def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield shuffled_data[start_index:end_index]
 
-
-def make_batches(num_epochs, batch_size, shuffle, dataset, data_path, max_words, max_examples=None):
+def load_data(dataset, data_path, max_words, max_examples=None):
     file_path = os.path.join(data_path, dataset+".txt")
-    documents, questions, answers = load_data(file_path, max_examples=max_examples)
+    documents, questions, answers = load_data_text(file_path, max_examples=max_examples)
     if dataset == "train":
         vocabulary_dict = build_vocab(documents+questions, max_words=max_words)
         entity_markers = list(set([w for w in vocabulary_dict.keys() if w.startswith('@entity')] + answers))
-        entity_markers = sorted(entity_markers)
+        entity_markers = sorted(entity_markers, key=lambda entity: int(entity[7:]))
         entity_markers = ['<unk_entity>'] + entity_markers
         entity_dict = {w: index for (index, w) in enumerate(entity_markers)}
         pickle.dump(entity_dict, open("entity.p", "wb"))
@@ -377,9 +379,35 @@ def make_batches(num_epochs, batch_size, shuffle, dataset, data_path, max_words,
 
     d_indices, q_indices, a_indices, entity_counts = \
         vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict)
+
+    return (d_indices, q_indices, a_indices, entity_counts)
+
+def make_batches(num_epochs, batch_size, shuffle, dataset, data_path, max_words, max_examples=None):
+    d_indices, q_indices, a_indices, entity_counts = \
+        load_data(dataset, data_path, max_words, max_examples)
     train_data = list(zip(d_indices, q_indices, a_indices, entity_counts))
     batches = batch_iter(train_data, num_epochs=num_epochs, batch_size=batch_size, shuffle=shuffle)
     return batches
+
+def pad_batch(batch, train=True):
+    if train:
+        d_indices = batch[:,0]
+        q_indices = batch[:,1]
+        a_indices = batch[:,2]
+        entity_counts = batch[:,3]
+    else:
+        d_indices = batch[0]
+        q_indices = batch[1]
+        a_indices = batch[2]
+        entity_counts = batch[3]
+
+    d_len = max([len(x) for x in d_indices])
+    q_len = max([len(x) for x in q_indices])
+
+    d_padded = np.vstack(tuple([np.pad(x, (0, d_len-len(x)), "constant", constant_values=(-1)) for x in d_indices]))
+    q_padded = np.vstack(tuple([np.pad(x, (0, q_len-len(x)), "constant", constant_values=(-1)) for x in q_indices]))
+
+    return (d_padded, q_padded, a_indices, entity_counts)
 
 if __name__ == "__main__":
     """

@@ -5,9 +5,11 @@ development/*
 reference/*
 .ipynb_checkpoints/*
 testing/*.p
+runs/*
 
 # Files #
 ######################
 /*.ipynb
 errata.py
 .DS_Store
+*.p

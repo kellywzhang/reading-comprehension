@@ -32,15 +32,19 @@ class BilinearFunction(object):
           # Dimensions (batch x attended_size)
           attending_tensor = tf.matmul(attending, self.W_bilinear)
           attending_tensor = tf.reshape(attending_tensor, [batch_size, attended_size, 1])
+          #self.attending_tensor = attending_tensor
+
+          #self.attended = attended
 
           # Now take dot products of attending tensor with each timestep of attended tensor
           # Should return matrix of attention weights with dimensions (batch x time)
 
           # multiplies each slice with each other respective slice - EXPLAIN BETTER
           dot_prod = tf.squeeze(tf.batch_matmul(attended, attending_tensor)) * time_mask
+          #self.dot_prod = dot_prod
 
-	  # Should return matrix of attention weights with dimensions (batch x time)
-          dot_prod = tf.squeeze(dot_prod)
+	      # Should return matrix of attention weights with dimensions (batch x time)
+          #dot_prod = tf.squeeze(dot_prod)
 
           # Custom Softmax b/c need to use time_mask --------------------
           # Also numerical stability: alpha_weights = tf.nn.softmax(dot_prod)
@@ -49,20 +53,17 @@ class BilinearFunction(object):
           # out = e_x / e_x.sum(axis=1)
           numerator = tf.exp(tf.sub(dot_prod, tf.expand_dims(tf.reduce_max(dot_prod, 1), -1))) * time_mask
           denom = tf.reduce_sum(numerator, 1)
+          #self.numerator = numerator
+          #self.denom = denom
 
-          # Transpose so broadcasting scalar division works properly
           # Dimensions (batch x time)
-          #alpha_weights = tf.transpose(tf.div(tf.transpose(numerator), denom))
           alpha_weights = tf.div(numerator, tf.expand_dims(denom, 1))
 
           # Find weighted sum of attended tensor using alpha_weights
           # attended dimensions: (batch x time x attended_size)
           attended_weighted = tf.mul(attended, tf.expand_dims(alpha_weights, -1))
+          #self.attended_weighted = attended_weighted
 
-          # Again must permute axes so broadcasting scalar multiplication works properly
-          #attended_transposed = tf.transpose(attended, perm=[2,0,1])
-          #attended_weighted_transposed = tf.mul(attended_transposed, alpha_weights)
-          #attended_weighted = tf.transpose(attended_weighted_transposed, perm=[1,2,0])
           # attend_result dimensions (batch x attended_size)
           attend_result = tf.reduce_sum(attended_weighted, 1)
 
