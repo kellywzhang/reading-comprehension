@@ -52,7 +52,7 @@ class BilinearFunction(object):
           # e_x = exp(x - x.max(axis=1))
           # out = e_x / e_x.sum(axis=1)
           numerator = tf.exp(tf.sub(dot_prod, tf.expand_dims(tf.reduce_max(dot_prod, 1), -1))) * time_mask
-          denom = tf.reduce_sum(numerator, 1)
+          denom = tf.reduce_sum(numerator, 1) # custom gather, then reduce sum
           #self.numerator = numerator
           #self.denom = denom
 

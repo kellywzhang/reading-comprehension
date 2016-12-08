@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 import datetime
-from StanfordReader import StanfordReader
+from SentenceClassifier import SentenceClassifier
 from tensorflow.contrib import learn
 import data_utils
 import cPickle
@@ -62,7 +62,6 @@ print("")
 # =============================== PREPARING DATA FOR TRAINING/VALIDATION/TESTING ===============================================
 print("Loading data...")
 
-#data_utils.one_time_data_preparation()
 
 # Loading all data points from pickle files
 all_corpus_vocabulary = cPickle.load(open('/scratch/vdn207/qa_project/final_saved_data/all_corpus_vocab.p', 'rb'))
@@ -97,34 +96,6 @@ print ("Val Q: ", x_val_q.shape)
 #print ("Test Q: ", x_test_q.shape)
 
 
-#===================================================================
-# Preparing small dataset to debug the memory error
-'''
-all_corpus_vocabulary = cPickle.load(open('corrected_data/all_corpus_vocab.p', 'rb'))
-
-print ("Loading documents....")
-
-np.save(open('small_corrected_data/x_train_d', 'wb'), x_train_d[:64, :])
-np.save(open('small_corrected_data/x_val_d', 'wb'), x_val_d[:64, :])
-np.save(open('small_corrected_data/x_test_d', 'wb'), x_test_d[:64, :])
-
-print ("Loading questions....")
-
-np.save(open('small_corrected_data/x_train_q', 'wb'), x_train_q[:64, :])
-np.save(open('small_corrected_data/x_val_q', 'wb'), x_val_q[:64, :])
-np.save(open('small_corrected_data/x_test_q', 'wb'), x_test_q[:64, :])
-
-print ("Loading choices....")
-np.save(open('small_corrected_data/y_train_choices', 'wb'), y_train_choices[:64, :])
-np.save(open('small_corrected_data/y_val_choices', 'wb'), y_val_choices[:64, :])
-np.save(open('small_corrected_data/y_test_choices', 'wb'), y_test_choices[:64, ])
-
-print ("Loading correct choices....")
-np.save(open('small_corrected_data/y_train', 'wb'), y_train[:64])
-np.save(open('small_corrected_data/y_val', 'wb'), y_val[:64])
-np.save(open('small_corrected_data/y_test', 'wb'), y_test[:64])
-'''
-
 batch_accuracy_training = []
 val_set_accuracy = []
 
@@ -141,11 +112,13 @@ with tf.Graph().as_default():
 
 	with sess.as_default():
 
-		stan_reader = StanfordReader(max_entities = 5, batch_size = FLAGS.batch_size)
+        # FIX THISS
+		sent_classifier = SentenceClassifer(max_entities = 5, batch_size = FLAGS.batch_size)
+
 		# Define Training procedure
 		global_step = tf.Variable(0, name="global_step", trainable=False)
 		optimizer = tf.train.AdamOptimizer(learning_rate = FLAGS.learning_rate)
-		grads_and_vars = optimizer.compute_gradients(stan_reader.loss)
+		grads_and_vars = optimizer.compute_gradients(sent_classifier.loss)
 		train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
 
 
@@ -167,8 +140,8 @@ with tf.Graph().as_default():
 		print("Writing to {}\n".format(out_dir))
 
 		# Summaries for loss and accuracy
-		loss_summary = tf.scalar_summary("loss", stan_reader.loss)
-		acc_summary = tf.scalar_summary("accuracy", stan_reader.accuracy)
+		loss_summary = tf.scalar_summary("loss", sent_classifier.loss)
+		acc_summary = tf.scalar_summary("accuracy", sent_classifier.accuracy)
 
 		# Train Summaries
 		train_summary_op = tf.merge_summary([loss_summary, acc_summary, grad_summaries_merged])
@@ -203,26 +176,24 @@ with tf.Graph().as_default():
 
 			#A single training step
 			feed_dict = {
-				stan_reader.seq_lens_d : seq_len_d,
-			    stan_reader.seq_lens_q : seq_len_q,
-			    stan_reader.input_d : tuple([doc[: max_seq_len_d] for doc in x_batch_d]),
-			    stan_reader.input_q : tuple([ques[: max_seq_len_q] for ques in x_batch_q]),
-			    stan_reader.input_a : y_batch,
-			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_batch_choices]),
+				sent_classifier.seq_lens_d : seq_len_d,
+			    sent_classifier.seq_lens_q : seq_len_q,
+			    sent_classifier.input_d : tuple([doc[: max_seq_len_d] for doc in x_batch_d]),
+			    sent_classifier.input_q : tuple([ques[: max_seq_len_q] for ques in x_batch_q]),
+			    sent_classifier.input_a : y_batch,
+			    sent_classifier.input_m : np.array([np.sum(c != 0) for c in y_batch_choices]),
 			}
 
-
-			print ("Ready for training....")
+			#print ("Ready for training....")
 
 			_, step, loss, accuracy = sess.run(
-			    [train_op, global_step, stan_reader.loss, stan_reader.accuracy],
+			    [train_op, global_step, sent_classifier.loss, sent_classifier.accuracy],
 			    feed_dict)
-
 
 			time_str = datetime.datetime.now().isoformat()
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
 
-			#train_summary_writer.add_summary(summaries, step)
+			train_summary_writer.add_summary(summaries, step)
 
 		def dev_step(x_val_d, x_val_q, y_val_choices, y_val, writer=None):
 
@@ -231,18 +202,17 @@ with tf.Graph().as_default():
                         max_seq_len_d = np.max(seq_len_d)
                         max_seq_len_q = np.max(seq_len_q)
 
-
 			# Evaluates model on a dev set
 			feed_dict = {
-				stan_reader.seq_lens_d : np.array([np.sum(doc != 0) for doc in x_val_d]),
-			    stan_reader.seq_lens_q : np.array([np.sum(ques != 0) for ques in x_val_q]),
-			    stan_reader.input_d : tuple([doc[: max_seq_len_d] for doc in x_val_d]),
-			    stan_reader.input_q : tuple([ques[: max_seq_len_q] for ques in x_val_q]),
-			    stan_reader.input_a : y_val,
-			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_val_choices]),
+				sent_classifier.seq_lens_d : np.array([np.sum(doc != 0) for doc in x_val_d]),
+			    sent_classifier.seq_lens_q : np.array([np.sum(ques != 0) for ques in x_val_q]),
+			    sent_classifier.input_d : tuple([doc[: max_seq_len_d] for doc in x_val_d]),
+			    sent_classifier.input_q : tuple([ques[: max_seq_len_q] for ques in x_val_q]),
+			    sent_classifier.input_a : y_val,
+			    sent_classifier.input_m : np.array([np.sum(c != 0) for c in y_val_choices]),
 			}
 			step, summaries, loss, accuracy = sess.run(
-			    [global_step, dev_summary_op, stan_reader.loss, stan_reader.accuracy],
+			    [global_step, dev_summary_op, sent_classifier.loss, sent_classifier.accuracy],
 			    feed_dict)
 			time_str = datetime.datetime.now().isoformat()
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
