@@ -7,8 +7,8 @@ import time
 import datetime
 from StanfordReader import StanfordReader
 from tensorflow.contrib import learn
-import cPickle
-import data_utils as dutils
+import data_utils
+import pickle
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):
     """
@@ -33,17 +33,17 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
 # ======================== MODEL HYPERPARAMETERS ========================================
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_integer("num_nodes", 16, "Number of nodes in fully connected layer")
-tf.flags.DEFINE_float("learning_rate", 0.001, "Learning rate")
+tf.flags.DEFINE_float("learning_rate", 10**-1, "Learning rate")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "Weight lambda on l2 regularization")
 
 # Training Parameters
 tf.flags.DEFINE_integer("batch_size", 32, "Batch Size")
 tf.flags.DEFINE_integer("num_epochs", 20, "Number of training epochs (default: 200)")
-tf.flags.DEFINE_integer("patience", 800, "Minimum number of batches seen before early stopping")
-tf.flags.DEFINE_integer("patience_increase", 6, "Number of dev evaluations of increasing loss before early stopping")
+#tf.flags.DEFINE_integer("patience", 800, "Minimum number of batches seen before early stopping")
+#tf.flags.DEFINE_integer("patience_increase", 6, "Number of dev evaluations of increasing loss before early stopping")
 
 # Display/Saving Parameters
-tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 100)")
+tf.flags.DEFINE_integer("evaluate_every", 50, "Evaluate model on dev set after this many steps (default: 100)")
 tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps (default: 100)")
 
 # Misc Parameters
@@ -62,55 +62,105 @@ print("")
 # =============================== PREPARING DATA FOR TRAINING/VALIDATION/TESTING ===============================================
 print("Loading data...")
 
-# Preparing the data only once and saving it for further usage.
-
-# dutils.one_time_data_preparation()
+#data_utils.one_time_data_preparation()
 
 # Loading all data points from pickle files
-all_corpus_vocabulary = cPickle.load(open('pickled_data/all_corpus_vocab.p', 'rb'))
+all_corpus_vocabulary = pickle.load(open('final_saved_data/all_corpus_vocab.p', 'rb'))
+
+num_words = 250
 
 print ("Loading documents....")
 
-x_train_d = np.load(open('pickled_data/x_train_d', 'rb'))
-x_val_d = np.load(open('pickled_data/x_val_d', 'rb'))
-x_test_d = np.load(open('pickled_data/x_test_d', 'rb'))
+x_train_d = np.load(open('final_saved_data/x_train_d', 'rb'))[:, :num_words]
+x_val_d = np.load(open('final_saved_data/x_val_d', 'rb'))[:, :num_words]
+#x_test_d = np.load(open('final_saved_data/x_test_d', 'rb'))
 
 print ("Loading questions....")
 
-x_train_q = np.load(open('pickled_data/x_train_q', 'rb'))
-x_val_q = np.load(open('pickled_data/x_val_q', 'rb'))
-x_test_q = np.load(open('pickled_data/x_test_q', 'rb'))
+x_train_q = np.load(open('final_saved_data/x_train_q', 'rb'))[:, :num_words]
+x_val_q = np.load(open('final_saved_data/x_val_q', 'rb'))[:, :num_words]
+#x_test_q = np.load(open('final_saved_data/x_test_q', 'rb'))
 
 print ("Loading choices....")
-y_train_choices = np.load(open('pickled_data/y_train_choices', 'rb'))
-y_val_choices = np.load(open('pickled_data/y_val_choices', 'rb'))
-y_test_choices = np.load(open('pickled_data/y_test_choices', 'rb'))
+y_train_choices = np.load(open('final_saved_data/y_train_choices', 'rb'))
+y_val_choices = np.load(open('final_saved_data/y_val_choices', 'rb'))
+#y_test_choices = np.load(open('final_saved_data/y_test_choices', 'rb'))
 
 print ("Loading correct choices....")
-y_train = np.load(open('pickled_data/y_train', 'rb'))
-y_val = np.load(open('pickled_data/y_val', 'rb'))
-y_test = np.load(open('pickled_data/y_test', 'rb'))
+y_train = np.load(open('final_saved_data/y_train', 'rb'))
+y_val = np.load(open('final_saved_data/y_val', 'rb'))
+#y_test = np.load(open('final_saved_data/y_test', 'rb'))
+
+print ("Train D: ", x_train_d.shape)
+print ("Val D: ", x_val_d.shape)
+#print ("Test D: ", x_test_d.shape)
+print ("Train Q: ", x_train_q.shape)
+print ("Val Q: ", x_val_q.shape)
+#print ("Test Q: ", x_test_q.shape)
+
+#===================================================================
+# Preparing small dataset to debug the memory error
+'''
+#all_corpus_vocabulary = cPickle.load(open('corrected_data/all_corpus_vocab.p', 'rb'))
+
+print ("Saving documents....")
+
+np.save(open('small_final_data/x_train_d', 'wb'), x_train_d[:8000, :])
+np.save(open('small_final_data/x_val_d', 'wb'), x_val_d[:8000, :])
+np.save(open('small_final_data/x_test_d', 'wb'), x_test_d[:8000, :])
+
+print ("Saving questions....")
+
+np.save(open('small_final_data/x_train_q', 'wb'), x_train_q[:8000, :])
+np.save(open('small_final_data/x_val_q', 'wb'), x_val_q[:8000, :])
+np.save(open('small_final_data/x_test_q', 'wb'), x_test_q[:8000, :])
+
+print ("Saving choices....")
+np.save(open('small_final_data/y_train_choices', 'wb'), y_train_choices[:8000, :])
+np.save(open('small_final_data/y_val_choices', 'wb'), y_val_choices[:8000, :])
+np.save(open('small_final_data/y_test_choices', 'wb'), y_test_choices[:8000, ])
+
+print ("Saving correct choices....")
+np.save(open('small_final_data/y_train', 'wb'), y_train[:800])
+np.save(open('small_final_data/y_val', 'wb'), y_val[:800])
+np.save(open('small_final_data/y_test', 'wb'), y_test[:8000])
+'''
 
 batch_accuracy_training = []
 val_set_accuracy = []
 
+# Dictionary to pass the index of the actual answer - The ID values are hard coded based on the vocab previously built
+answer_idx = {1:0, 273:2, 343:4, 254:1, 302:3}
+# 5k - 204   1 251 190 225
+# 50k - 273   1 343 254 302 
 # ================================================== MODEL TRAINING ======================================
+
 
 with tf.Graph().as_default():
 	session_conf = tf.ConfigProto(
 	allow_soft_placement=FLAGS.allow_soft_placement,
 	log_device_placement=FLAGS.log_device_placement)
+	
+	session_conf.gpu_options.allow_growth = True
 
 	sess = tf.Session(config=session_conf)
 
 	with sess.as_default():
 		
-		stan_reader = StanfordReader(max_entities = 5)
+		stan_reader = StanfordReader(max_entities = 5, batch_size = FLAGS.batch_size)
+		
 		# Define Training procedure
+
 		global_step = tf.Variable(0, name="global_step", trainable=False)
-		optimizer = tf.train.AdamOptimizer(learning_rate = 0.0000005)
-		grads_and_vars = optimizer.compute_gradients(stan_reader.loss)
-		train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+		optimizer = tf.train.AdamOptimizer(learning_rate = FLAGS.learning_rate)
+		grads_and_vars = optimizer.compute_gradients(stan_reader.loss, aggregation_method = 2)	# aggregation_method is an experimental feature introduced for faster gradient computation
+		clipped_grads = []
+		for g, v in grads_and_vars:
+			if g is not None:
+				clipped = tf.clip_by_norm(g, clip_norm=10.)
+				clipped_grads.append((clipped, v))
+
+		train_op = optimizer.apply_gradients(clipped_grads, global_step=global_step)
 
 
 		# Keep track of gradient values and sparsity (optional)
@@ -121,7 +171,7 @@ with tf.Graph().as_default():
 			    sparsity_summary = tf.scalar_summary("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
 			    grad_summaries.append(grad_hist_summary)
 			    grad_summaries.append(sparsity_summary)
-			grad_summaries_merged = tf.merge_summary(grad_summaries)
+		grad_summaries_merged = tf.merge_summary(grad_summaries)
 
 
 
@@ -160,58 +210,48 @@ with tf.Graph().as_default():
 		
 		def train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch):
 			
-			seq_len_d = np.array([np.sum(doc != 0) for doc in x_batch_d])
-			seq_len_q = np.array([np.sum(ques != 0) for ques in x_batch_q])
-			max_seq_len_d = np.max(seq_len_d)
-			max_seq_len_q = np.max(seq_len_q)		
+			#seq_len_d = np.array([np.sum(doc != 0) for doc in x_batch_d])
+			#seq_len_q = np.array([np.sum(ques != 0) for ques in x_batch_q])
+			#max_seq_len_d = np.max(seq_len_d)
+			#max_seq_len_q = np.max(seq_len_q)		
 
 			#A single training step
 			feed_dict = {
-				stan_reader.seq_lens_d : seq_len_d,
-			    stan_reader.seq_lens_q : seq_len_q,
-			    stan_reader.input_d : tuple([doc[: max_seq_len_d] for doc in x_batch_d]),
-			    stan_reader.input_q : tuple([ques[: max_seq_len_q] for ques in x_batch_q]),
-			    stan_reader.input_a : np.array([y[0] for y in y_batch]),
-			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_batch_choices])
+				#stan_reader.seq_lens_d : seq_len_d,
+			    #stan_reader.seq_lens_q : seq_len_q,
+			    stan_reader.input_d : x_batch_d,
+			    stan_reader.input_q : x_batch_q,
+			    stan_reader.input_a : np.array([answer_idx[a_id] for a_id in y_batch]),
+			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_batch_choices]),
 			}
 	
 
-			print ("Ready for training....")
-
-			'''
 			_, step, summaries, loss, accuracy = sess.run(
-			    [train_op, train_summary_op, global_step, stan_reader.loss, stan_reader.accuracy],
+			    [train_op, global_step, train_summary_op, stan_reader.loss, stan_reader.accuracy],
 			    feed_dict)
-			'''
-
-			# Used the call below as summaries was throwing NaN error due to the variable 'loss' taking NaN values
-			_, step, loss, accuracy = sess.run(
-			    [train_op, global_step, stan_reader.loss, stan_reader.accuracy],
-			    feed_dict)
-
+			
 
 			time_str = datetime.datetime.now().isoformat()
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
 
-
-			# Commenting out the summary log for the same NaN error mentioned above. 
-			#train_summary_writer.add_summary(summaries, step)
+			train_summary_writer.add_summary(summaries, step)
 
 		def dev_step(x_val_d, x_val_q, y_val_choices, y_val, writer=None):
 
-			seq_len_d = np.array([np.sum(doc != 0) for doc in x_val_d])
-			seq_len_q = np.array([np.sum(ques != 0) for ques in x_val_q])
-			max_seq_len_d = np.max(seq_len_d)
-			max_seq_len_q = np.max(seq_len_q)
+			#seq_len_d = np.array([np.sum(doc != 0) for doc in x_val_d])
+			#seq_len_q = np.array([np.sum(ques != 0) for ques in x_val_q])
+			#max_seq_len_d = np.max(seq_len_d)
+			#max_seq_len_q = np.max(seq_len_q)
+
 
 			# Evaluates model on a dev set
 			feed_dict = {
-				stan_reader.seq_lens_d : np.array([np.sum(doc != 0) for doc in x_val_d]),
-			    stan_reader.seq_lens_q : np.array([np.sum(ques != 0) for ques in x_val_q]),
-			    stan_reader.input_d : tuple([doc[: max_seq_len_d] for doc in x_val_d]),
-			    stan_reader.input_q : tuple([ques[: max_seq_len_q] for ques in x_val_q]),
-			    stan_reader.input_a : np.array([y[0] for y in y_val]),
-			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_val_choices])
+				#stan_reader.seq_lens_d : np.array([np.sum(doc != 0) for doc in x_val_d]),
+			    #stan_reader.seq_lens_q : np.array([np.sum(ques != 0) for ques in x_val_q]),
+			    stan_reader.input_d : x_val_d,
+			    stan_reader.input_q : x_val_q,
+			    stan_reader.input_a : np.array([answer_idx[a_id] for a_id in y_val]),
+			    stan_reader.input_m : np.array([np.sum(c != 0) for c in y_val_choices]),
 			}
 			step, summaries, loss, accuracy = sess.run(
 			    [global_step, dev_summary_op, stan_reader.loss, stan_reader.accuracy],
@@ -223,8 +263,8 @@ with tf.Graph().as_default():
 		
 
 		# Generate batches
-		batches = batch_iter(list(zip(x_train_d[:64], x_train_q[:64], y_train_choices[:64], y_train[:64])), FLAGS.batch_size, FLAGS.num_epochs)     
-
+		batches = batch_iter(list(zip(x_train_d, x_train_q, y_train_choices, y_train)), FLAGS.batch_size, FLAGS.num_epochs)     
+		
 		for batch in batches:
 
 			x_batch_d, x_batch_q, y_batch_choices, y_batch = zip(*batch)
@@ -240,4 +280,5 @@ with tf.Graph().as_default():
 			if current_step % FLAGS.checkpoint_every == 0:
 			    path = saver.save(sess, checkpoint_prefix, global_step=current_step)
 			    print("Saved model checkpoint to {}\n".format(path))
+		
 

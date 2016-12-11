@@ -21,25 +21,26 @@ import numpy as np
 import pickle
 from collections import Counter
 import os
+from tensorflow.contrib import learn
 
 def one_time_data_preparation():
-    
+
     # LOADING DOCUMENTS
 
     # Train
-    with open('../data_prep/top_50k/train_documents.txt', 'r') as train_d_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/train_documents.txt', 'r') as train_d_file:
         train_d = [x.strip() for x in train_d_file.readlines()]
 
     print ("Number of training documents: ", len(train_d))
 
     # Validation
-    with open('../data_prep/top_50k/val_documents.txt', 'r') as val_d_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/val_documents.txt', 'r') as val_d_file:
         val_d = [x.strip() for x in val_d_file.readlines()]
 
     print ("Number of validation documents: ", len(val_d))
 
     # Test
-    with open('../data_prep/top_50k/test_documents.txt', 'r') as test_d_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/test_documents.txt', 'r') as test_d_file:
         test_d = [x.strip() for x in test_d_file.readlines()]
 
     print ("Number of test documents: ", len(test_d))
@@ -48,52 +49,51 @@ def one_time_data_preparation():
     # LOADING QUESTIONS
 
     # Train
-    with open('../data_prep/top_50k/train_questions.txt', 'r') as train_q_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/train_questions.txt', 'r') as train_q_file:
         train_q = [x.strip() for x in train_q_file.readlines()]
 
     print("Number of training questions: ", len(train_q))
 
     # Validation
-    with open('../data_prep/top_50k/val_questions.txt', 'r') as val_q_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/val_questions.txt', 'r') as val_q_file:
         val_q = [x.strip() for x in val_q_file.readlines()]
 
     print ("Number of validation questions: ", len(val_q))
 
 
     # Test
-    with open('../data_prep/top_50k/test_questions.txt', 'r') as test_q_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/test_questions.txt', 'r') as test_q_file:
         test_q = [x.strip() for x in test_q_file.readlines()]
 
     print ("Number of test questions: ", len(test_q))
 
 
     # Build documents vocabulary
-    all_corpus_d = train_d + val_d + test_d
+    all_corpus_d = train_d + val_d
 
     # Build questions vocabulary
-    all_corpus_q = train_q + val_q + test_q
+    all_corpus_q = train_q + val_q
 
-    # Preparing the answers
 
     # Train
-    with open('../data_prep/top_50k/train_choices_ent.txt', 'r') as train_choice_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/train_choices_ent.txt', 'r') as train_choice_file:
         all_train_choices = [x.strip().replace(",", ' ') for x in train_choice_file.readlines()]
 
-    with open('../data_prep/top_50k/train_correct_choices_ent.txt', 'r') as train_correct_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/train_correct_choices_ent.txt', 'r') as train_correct_file:
         train_correct_choices = [x.strip() for x in train_correct_file.readlines()]
 
     # Validation
-    with open('../data_prep/top_50k/val_choices_ent.txt', 'r') as val_choice_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/val_choices_ent.txt', 'r') as val_choice_file:
         all_val_choices = [x.strip().replace(",", ' ') for x in val_choice_file.readlines()]
 
-    with open('../data_prep/top_50k/val_correct_choices_ent.txt', 'r') as val_correct_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/val_correct_choices_ent.txt', 'r') as val_correct_file:
         val_correct_choices = [x.strip() for x in val_correct_file.readlines()]
 
     # Test
-    with open('../data_prep/top_50k/test_choices_ent.txt', 'r') as test_choice_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/test_choices_ent.txt', 'r') as test_choice_file:
         all_test_choices = [x.strip().replace(",", ' ') for x in test_choice_file.readlines()]
 
-    with open('../data_prep/top_50k/test_correct_choices_ent.txt', 'r') as test_correct_file:
+    with open('/scratch/vdn207/qa_project/ptb_tokenizer/top_5k/test_correct_choices_ent.txt', 'r') as test_correct_file:
         test_correct_choices = [x.strip() for x in test_correct_file.readlines()]
 
     all_choices = all_test_choices + all_val_choices + all_train_choices
@@ -108,43 +108,58 @@ def one_time_data_preparation():
 
     all_corpus_vocabulary = learn.preprocessing.VocabularyProcessor(max_vocab)
     # Saving the vocabulary for future purposes
-    cPickle.dump(all_corpus_vocabulary, open('pickled_data/all_corpus_vocab.p', 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
+    pickle.dump(all_corpus_vocabulary, open('/scratch/vdn207/qa_project/small_final_data/all_corpus_vocab.p', 'wb'))
 
     x_train_d = np.array(list(all_corpus_vocabulary.fit_transform(train_d)))
-    np.save(open('pickled_data/x_train_d', 'wb'), x_train_d)
+    max_train_d_len = max([len(x.split(" ")) for x in train_d])
+    print ("Train D: ", x_train_d.shape)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/x_train_d', 'wb'), x_train_d[:, :max_train_d_len])
 
     x_val_d = np.array(list(all_corpus_vocabulary.fit_transform(val_d)))
-    np.save(open('pickled_data/x_val_d', 'wb'), x_val_d)
+    max_val_d_len = max([len(x.split(" ")) for x in val_d])
+    print ("Val D: ", x_val_d.shape)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/x_val_d', 'wb'), x_val_d[:, :max_val_d_len])
 
-    x_test_d = np.array(list(all_corpus_vocabulary.fit_transform(test_d)))
-    np.save(open('pickled_data/x_test_d', 'wb'), x_test_d)
+    x_test_d = np.array(list(all_corpus_vocabulary.transform(test_d)))
+    max_test_d_len = max([len(x.split(" ")) for x in test_d])
+    print ("Test D: ", x_test_d.shape)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/x_test_d', 'wb'), x_test_d[:, :max_test_d_len])
 
     x_train_q = np.array(list(all_corpus_vocabulary.fit_transform(train_q)))
-    np.save(open('pickled_data/x_train_q', 'wb'), x_train_q)
+    max_train_q_len = max([len(x.split(" ")) for x in train_q])
+    print ("Train Q: ", x_train_q.shape)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/x_train_q', 'wb'), x_train_q[:, :max_train_q_len])
 
     x_val_q = np.array(list(all_corpus_vocabulary.fit_transform(val_q)))
-    np.save(open('pickled_data/x_val_q', 'wb'), x_val_q)
+    max_val_q_len = max([len(x.split(" ")) for x in val_q])
+    print ("Val Q: ", x_val_q.shape)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/x_val_q', 'wb'), x_val_q[:, :max_val_q_len])
 
-    x_test_q = np.array(list(all_corpus_vocabulary.fit_transform(test_q)))
-    np.save(open('pickled_data/x_test_q', 'wb'), x_test_q)
+    x_test_q = np.array(list(all_corpus_vocabulary.transform(test_q)))
+    max_test_q_len = max([len(x.split(" ")) for x in test_q])
+    print ("Test Q: ", x_test_q.shape)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/x_test_q', 'wb'), x_test_q[:, :max_test_q_len])
 
     y_train_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_train_choices)))
-    np.save(open('pickled_data/y_train_choices', 'wb'), y_train_choices)
+    max_y_train_len = max([len(x.split(" ")) for x in all_train_choices])
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/y_train_choices', 'wb'), y_train_choices[:, :max_y_train_len])
 
     y_val_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_val_choices)))
-    np.save(open('pickled_data/y_val_choices', 'wb'), y_val_choices)
+    max_y_val_len = max([len(x.split(" ")) for x in all_val_choices])
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/y_val_choices', 'wb'), y_val_choices[:, :max_y_val_len])
 
-    y_test_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_test_choices)))
-    np.save(open('pickled_data/y_test_choices', 'wb'), y_test_choices)
+    y_test_choices = np.array(list(all_corpus_vocabulary.transform(all_test_choices)))
+    max_y_test_len = max([len(x.split(" ")) for x in all_test_choices])
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/y_test_choices', 'wb'), y_test_choices[:, :max_y_test_len])
 
     y_train = np.array(list(all_corpus_vocabulary.fit_transform(train_correct_choices)))
-    np.save(open('pickled_data/y_train', 'wb'), y_train)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/y_train', 'wb'), y_train[:, 0])
 
     y_val = np.array(list(all_corpus_vocabulary.fit_transform(val_correct_choices)))
-    np.save(open('pickled_data/y_val', 'wb'), y_val)
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/y_val', 'wb'), y_val[:, 0])
 
-    y_test = np.array(list(all_corpus_vocabulary.fit_transform(test_correct_choices)))
-    np.save(open('pickled_data/y_test', 'wb'), y_test)
+    y_test = np.array(list(all_corpus_vocabulary.transform(test_correct_choices)))
+    np.save(open('/scratch/vdn207/qa_project/small_final_data/y_test', 'wb'), y_test[:, 0])
 
 
 def make_data_file(in_file_path, write_file, relabeling=True):
@@ -209,7 +224,7 @@ def make_data_file(in_file_path, write_file, relabeling=True):
 
     return (documents, questions, answers)
 
-def load_data(in_file_path, max_examples=None):
+def load_data_text(in_file_path, max_examples=None):
     """
     Purpose:
     Loads CNN / Daily Mail data from {train | dev | test}.txt
@@ -246,7 +261,7 @@ def load_data(in_file_path, max_examples=None):
     f.close()
     return (documents, questions, answers)
 
-def build_vocab(sentences, pickle_path=None, max_words=50000):
+def build_vocab(sentences, pickle_path=True, max_words=50000):
     """
     Purpose:
     Builds a dict (word, index) for `max_words` number of words in `sentences`.
@@ -257,13 +272,14 @@ def build_vocab(sentences, pickle_path=None, max_words=50000):
         for w in sent.split(' '):
             word_count[w] += 1
 
-    ls = word_count.most_common(max_words)
+    ls = word_count.most_common(max_words-2)
 
     # leave 0 to UNK
     # leave 1 to delimiter |||
     vocab_dict = {w[0]: index + 2 for (index, w) in enumerate(ls)}
     if pickle_path:
-        pickle.dump(vocab_dict, open(os.path.join(pickle_path, "vocabulary_dict"), "wb"))
+        #pickle.dump(vocab_dict, open(os.path.join(pickle_path, "vocabulary_dict"), "wb"))
+        pickle.dump(vocab_dict, open("vocabulary_dict.p", "wb"))
     return vocab_dict
 
 def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
@@ -278,8 +294,10 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
     d_indices = []
     q_indices = []
     a_indices = []
+    entity_counts = []
+    print(entity_dict)
     # Marks whether entity in the document
-    entity_mask = np.zeros((len(answers), len(entity_dict)))
+    #entity_mask = np.zeros((len(answers), len(entity_dict)))
 
     for i in range(len(answers)):
         d_words = documents[i].split(' ')
@@ -291,7 +309,19 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
             d_indices.append(seq1)
             q_indices.append(seq2)
             a_indices.append(entity_dict[answers[i]] if answers[i] in entity_dict else 0)
-            entity_mask[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1.0
+            entity_count = 0
+            for w in d_words:
+                if w in entity_dict:
+                    num = int(w[7:])
+                    if num > entity_count:
+                        entity_count = num
+            entity_counts.append(entity_count)
+            # print(d_words)
+            # print(entity_count)
+            # print(answers[i])
+            # print(entity_dict[answers[i]])
+            #print([entity_dict[w] for w in d_words if w in entity_dict])
+            #entity_mask[i, [entity_dict[w] for w in d_words if w in entity_dict]] = 1
         if verbose and (i % 10000 == 0):
             print('Vectorization: processed {} / {}'.format(i, len(answers)))
 
@@ -304,10 +334,11 @@ def vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict,
         d_indices = [d_indices[i] for i in sorted_index]
         q_indices = [q_indices[i] for i in sorted_index]
         a_indices = [a_indices[i] for i in sorted_index]
-        entity_mask = entity_mask[sorted_index]
+        entity_counts = [entity_counts[i] for i in sorted_index]
+        #entity_counts[sorted_index]
 
     # Change a_indices to one-hot vector form
-    return d_indices, q_indices, a_indices, entity_mask
+    return (d_indices, q_indices, a_indices, entity_counts)
 
 def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
     """
@@ -318,7 +349,7 @@ def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
     """
     data = np.array(data)
     data_size = len(data)
-    num_batches_per_epoch = int(len(data)/batch_size) + 1
+    num_batches_per_epoch = int(len(data)/batch_size)
     for epoch in range(num_epochs):
         # Shuffle the data at each epoch
         if shuffle:
@@ -330,6 +361,53 @@ def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield shuffled_data[start_index:end_index]
+
+def load_data(dataset, data_path, max_words, max_examples=None):
+    file_path = os.path.join(data_path, dataset+".txt")
+    documents, questions, answers = load_data_text(file_path, max_examples=max_examples)
+    if dataset == "train":
+        vocabulary_dict = build_vocab(documents+questions, max_words=max_words)
+        entity_markers = list(set([w for w in vocabulary_dict.keys() if w.startswith('@entity')] + answers))
+        entity_markers = sorted(entity_markers, key=lambda entity: int(entity[7:]))
+        entity_markers = ['<unk_entity>'] + entity_markers
+        entity_dict = {w: index for (index, w) in enumerate(entity_markers)}
+        pickle.dump(entity_dict, open("entity.p", "wb"))
+    else:
+        vocabulary_dict = pickle.load(open("vocabulary_dict.p", "rb"))
+        entity_dict = pickle.load(open("entity.p", "rb"))
+    # assuming num entities in dev and test <= num entities in train
+
+    d_indices, q_indices, a_indices, entity_counts = \
+        vectorize_data(documents, questions, answers, vocabulary_dict, entity_dict)
+
+    return (d_indices, q_indices, a_indices, entity_counts)
+
+def make_batches(num_epochs, batch_size, shuffle, dataset, data_path, max_words, max_examples=None):
+    d_indices, q_indices, a_indices, entity_counts = \
+        load_data(dataset, data_path, max_words, max_examples)
+    train_data = list(zip(d_indices, q_indices, a_indices, entity_counts))
+    batches = batch_iter(train_data, num_epochs=num_epochs, batch_size=batch_size, shuffle=shuffle)
+    return batches
+
+def pad_batch(batch, train=True):
+    if train:
+        d_indices = batch[:,0]
+        q_indices = batch[:,1]
+        a_indices = batch[:,2]
+        entity_counts = batch[:,3]
+    else:
+        d_indices = batch[0]
+        q_indices = batch[1]
+        a_indices = batch[2]
+        entity_counts = batch[3]
+
+    d_len = max([len(x) for x in d_indices])
+    q_len = max([len(x) for x in q_indices])
+
+    d_padded = np.vstack(tuple([np.pad(x, (0, d_len-len(x)), "constant", constant_values=(-1)) for x in d_indices]))
+    q_padded = np.vstack(tuple([np.pad(x, (0, q_len-len(x)), "constant", constant_values=(-1)) for x in q_indices]))
+
+    return (d_padded, q_padded, a_indices, entity_counts)
 
 if __name__ == "__main__":
     """
