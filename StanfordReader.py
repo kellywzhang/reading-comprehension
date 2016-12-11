@@ -80,7 +80,6 @@ class StanfordReader(object):
         masked_q = tf.mul(self.input_q, mask_q)
         one_hot_a = tf.one_hot(self.input_a, self.max_entities)
 
-
         # Buildling Graph (Network Layers)
         # ==================================================
         with tf.device('/cpu:0'), tf.variable_scope("embedding"):

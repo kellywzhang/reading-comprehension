@@ -33,7 +33,7 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
 # ======================== MODEL HYPERPARAMETERS ========================================
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_integer("num_nodes", 16, "Number of nodes in fully connected layer")
-tf.flags.DEFINE_float("learning_rate", 10**-1, "Learning rate")
+tf.flags.DEFINE_float("learning_rate", 10**-3, "Learning rate")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "Weight lambda on l2 regularization")
 
 # Training Parameters
@@ -65,31 +65,31 @@ print("Loading data...")
 #data_utils.one_time_data_preparation()
 
 # Loading all data points from pickle files
-all_corpus_vocabulary = pickle.load(open('final_saved_data/all_corpus_vocab.p', 'rb'))
+all_corpus_vocabulary = pickle.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/all_corpus_vocab.p', 'rb'))
 
-num_words = 250
+num_words = 2943
 
 print ("Loading documents....")
 
-x_train_d = np.load(open('final_saved_data/x_train_d', 'rb'))[:, :num_words]
-x_val_d = np.load(open('final_saved_data/x_val_d', 'rb'))[:, :num_words]
-#x_test_d = np.load(open('final_saved_data/x_test_d', 'rb'))
+x_train_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_train_d', 'rb'))[:, :num_words]
+x_val_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_val_d', 'rb'))[:, :num_words]
+#x_test_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_test_d', 'rb'))
 
 print ("Loading questions....")
 
-x_train_q = np.load(open('final_saved_data/x_train_q', 'rb'))[:, :num_words]
-x_val_q = np.load(open('final_saved_data/x_val_q', 'rb'))[:, :num_words]
-#x_test_q = np.load(open('final_saved_data/x_test_q', 'rb'))
+x_train_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_train_q', 'rb'))[:, :num_words]
+x_val_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_val_q', 'rb'))[:, :num_words]
+#x_test_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_test_q', 'rb'))
 
 print ("Loading choices....")
-y_train_choices = np.load(open('final_saved_data/y_train_choices', 'rb'))
-y_val_choices = np.load(open('final_saved_data/y_val_choices', 'rb'))
-#y_test_choices = np.load(open('final_saved_data/y_test_choices', 'rb'))
+y_train_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_train_choices', 'rb'))
+y_val_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_val_choices', 'rb'))
+#y_test_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_test_choices', 'rb'))
 
 print ("Loading correct choices....")
-y_train = np.load(open('final_saved_data/y_train', 'rb'))
-y_val = np.load(open('final_saved_data/y_val', 'rb'))
-#y_test = np.load(open('final_saved_data/y_test', 'rb'))
+y_train = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_train', 'rb'))
+y_val = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_val', 'rb'))
+#y_test = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_test', 'rb'))
 
 print ("Train D: ", x_train_d.shape)
 print ("Val D: ", x_val_d.shape)
@@ -97,34 +97,6 @@ print ("Val D: ", x_val_d.shape)
 print ("Train Q: ", x_train_q.shape)
 print ("Val Q: ", x_val_q.shape)
 #print ("Test Q: ", x_test_q.shape)
-
-#===================================================================
-# Preparing small dataset to debug the memory error
-'''
-#all_corpus_vocabulary = cPickle.load(open('corrected_data/all_corpus_vocab.p', 'rb'))
-
-print ("Saving documents....")
-
-np.save(open('small_final_data/x_train_d', 'wb'), x_train_d[:8000, :])
-np.save(open('small_final_data/x_val_d', 'wb'), x_val_d[:8000, :])
-np.save(open('small_final_data/x_test_d', 'wb'), x_test_d[:8000, :])
-
-print ("Saving questions....")
-
-np.save(open('small_final_data/x_train_q', 'wb'), x_train_q[:8000, :])
-np.save(open('small_final_data/x_val_q', 'wb'), x_val_q[:8000, :])
-np.save(open('small_final_data/x_test_q', 'wb'), x_test_q[:8000, :])
-
-print ("Saving choices....")
-np.save(open('small_final_data/y_train_choices', 'wb'), y_train_choices[:8000, :])
-np.save(open('small_final_data/y_val_choices', 'wb'), y_val_choices[:8000, :])
-np.save(open('small_final_data/y_test_choices', 'wb'), y_test_choices[:8000, ])
-
-print ("Saving correct choices....")
-np.save(open('small_final_data/y_train', 'wb'), y_train[:800])
-np.save(open('small_final_data/y_val', 'wb'), y_val[:800])
-np.save(open('small_final_data/y_test', 'wb'), y_test[:8000])
-'''
 
 batch_accuracy_training = []
 val_set_accuracy = []
@@ -264,17 +236,19 @@ with tf.Graph().as_default():
 
 		# Generate batches
 		batches = batch_iter(list(zip(x_train_d, x_train_q, y_train_choices, y_train)), FLAGS.batch_size, FLAGS.num_epochs)     
+
 		
 		for batch in batches:
 
 			x_batch_d, x_batch_q, y_batch_choices, y_batch = zip(*batch)
-			
+				
 			batch_accuracy = train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch)
 
 
 			current_step = tf.train.global_step(sess, global_step)
 			if current_step % FLAGS.evaluate_every == 0:
 			    print("\nEvaluation:")
+		   	    
 			    dev_step(x_val_d, x_val_q, y_val_choices, y_val, writer=dev_summary_writer)
 
 			if current_step % FLAGS.checkpoint_every == 0:
