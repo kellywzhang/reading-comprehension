@@ -121,7 +121,6 @@ with tf.Graph().as_default():
 		grads_and_vars = optimizer.compute_gradients(sent_classifier.loss)
 		train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
 
-
 		# Keep track of gradient values and sparsity (optional)
 		grad_summaries = []
 		for g, v in grads_and_vars:
@@ -131,8 +130,6 @@ with tf.Graph().as_default():
 			    grad_summaries.append(grad_hist_summary)
 			    grad_summaries.append(sparsity_summary)
 			grad_summaries_merged = tf.merge_summary(grad_summaries)
-
-
 
 		# Output directory for models and summaries
 		timestamp = str(int(time.time()))
@@ -161,7 +158,7 @@ with tf.Graph().as_default():
 		saver = tf.train.Saver(tf.all_variables())
 
 		# Write vocabulary
-		all_corpus_vocabulary.save(os.path.join(out_dir, "vocab"))
+		#all_corpus_vocabulary.save(os.path.join(out_dir, "vocab"))
 
 		# Initialize all variables
 		sess.run(tf.initialize_all_variables())

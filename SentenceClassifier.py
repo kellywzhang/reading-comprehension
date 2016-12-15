@@ -41,6 +41,8 @@ class SentenceClassifier(object):
         self.sentences = tf.placeholder(tf.int32, [None, None], name="sentences")
         self.questions = tf.placeholder(tf.int32, [batch_size, None], name="questions")
         self.labels = tf.placeholder(tf.int32, [batch_size, ], name="labels")
+        self.sentence_lens
+        self.question_lens
 
         max_sent_per_doc = tf.cast(tf.shape(sentence_mask)[0]/batch_size, tf.int32)
 
