@@ -96,16 +96,16 @@ class StanfordReader(object):
             document_embedding = tf.gather(W_embeddings, masked_d)
             question_embedding = tf.gather(W_embeddings, masked_q)
 
-	    document_embedding = tf.reshape(document_embedding, shape = [self.num_docs, self.window_size, self.max_length / self.window_size, embedding_dim])
-	    document_cbow = tf.reduce_mean(document_embedding, 1)
+	    #document_embedding = tf.reshape(document_embedding, shape = [self.num_docs, self.window_size, self.max_length / self.window_size, embedding_dim])
+	    #document_cbow = tf.reduce_mean(document_embedding, 1)
 
 	    # Experimental aspect. Combining the CBOW of a sequence of 20 words in every document.
 	    #document_cbow = tf.batch_matmul(self.cbow_mask, document_embedding)
 	
         with tf.variable_scope("bidirection_rnn"):
-	    seq_lens_cbow = tf.reshape(tf.div(seq_lens_d, self.window_size), [-1])
+	    #seq_lens_cbow = tf.reshape(tf.div(seq_lens_d, self.window_size), [-1])
 
-	    mask_d = tf.cast(tf.sequence_mask(seq_lens_cbow), tf.float32) #or float64?
+	    mask_d = tf.cast(tf.sequence_mask(seq_lens), tf.float32) #or float64?
             #mask_d = tf.cast(tf.sequence_mask(seq_lens_d), tf.float32)
 	    mask_q = tf.cast(tf.sequence_mask(seq_lens_q), tf.float32)
 
@@ -117,7 +117,7 @@ class StanfordReader(object):
             backward_cell_q = GRUCell(state_size=hidden_size, input_size=embedding_dim, scope="GRU-Backward-Q")
 
             hidden_states_d, last_state_d = bidirectional_rnn(forward_cell_d, backward_cell_d, \
-                document_cbow, mask_d, concatenate=True)
+                document_embedding, mask_d, concatenate=True)
 
             hidden_states_q, last_state_q = bidirectional_rnn(forward_cell_q, backward_cell_q, \
                 question_embedding, mask_q, concatenate=True)
