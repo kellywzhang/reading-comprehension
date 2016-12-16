@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 import datetime
-from StanfordReader import StanfordReader
+from StanfordReader250 import StanfordReader
 from tensorflow.contrib import learn
 import data_utils
 import pickle
@@ -66,56 +66,31 @@ print("Loading data...")
 #data_utils.one_time_data_preparation()
 
 # Loading all data points from pickle files
-all_corpus_vocabulary = pickle.load(open('pickled_data/all_corpus_vocab.p', 'rb'))
+all_corpus_vocabulary = pickle.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/all_corpus_vocab.p', 'rb'))
+
+num_words = 250
 
 print ("Loading documents....")
 
-x_train_d = np.load(open('pickled_data/x_train_d', 'rb'))
-x_val_d = np.load(open('pickled_data/x_val_d', 'rb'))
-x_test_d = np.load(open('pickled_data/x_test_d', 'rb'))
+x_train_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_train_d', 'rb'))[:, :num_words]
+x_val_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_val_d', 'rb'))[:, :num_words]
+#x_test_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_test_d', 'rb'))
 
 print ("Loading questions....")
 
-x_train_q = np.load(open('pickled_data/x_train_q', 'rb'))
-x_val_q = np.load(open('pickled_data/x_val_q', 'rb'))
-x_test_q = np.load(open('pickled_data/x_test_q', 'rb'))
+x_train_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_train_q', 'rb'))[:, :num_words]
+x_val_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_val_q', 'rb'))[:, :num_words]
+#x_test_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_test_q', 'rb'))
 
 print ("Loading choices....")
-y_train_choices = np.load(open('pickled_data/y_train_choices', 'rb'))
-y_val_choices = np.load(open('pickled_data/y_val_choices', 'rb'))
-y_test_choices = np.load(open('pickled_data/y_test_choices', 'rb'))
+y_train_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_train_choices', 'rb'))
+y_val_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_val_choices', 'rb'))
+#y_test_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_test_choices', 'rb'))
 
 print ("Loading correct choices....")
-y_train = np.load(open('pickled_data/y_train', 'rb'))
-y_val = np.load(open('pickled_data/y_val', 'rb'))
-y_test = np.load(open('pickled_data/y_test', 'rb'))
-# =======
-# all_corpus_vocabulary = pickle.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/all_corpus_vocab.p', 'rb'))
-#
-# num_words = 2943
-#
-# print ("Loading documents....")
-#
-# x_train_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_train_d', 'rb'))[:, :num_words]
-# x_val_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_val_d', 'rb'))[:, :num_words]
-# #x_test_d = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_test_d', 'rb'))
-#
-# print ("Loading questions....")
-#
-# x_train_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_train_q', 'rb'))[:, :num_words]
-# x_val_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_val_q', 'rb'))[:, :num_words]
-# #x_test_q = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/x_test_q', 'rb'))
-#
-# print ("Loading choices....")
-# y_train_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_train_choices', 'rb'))
-# y_val_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_val_choices', 'rb'))
-# #y_test_choices = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_test_choices', 'rb'))
-#
-# print ("Loading correct choices....")
-# y_train = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_train', 'rb'))
-# y_val = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_val', 'rb'))
-# #y_test = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_test', 'rb'))
-# >>>>>>> 64ca0669b301a66887d3a630f560b320d22bbd02
+y_train = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_train', 'rb'))
+y_val = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_val', 'rb'))
+#y_test = np.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/y_test', 'rb'))
 
 print ("Train D: ", x_train_d.shape)
 print ("Val D: ", x_val_d.shape)
@@ -158,7 +133,7 @@ val_set_accuracy = []
 # Dictionary to pass the index of the actual answer - The ID values are hard coded based on the vocab previously built
 answer_idx = {1:0, 273:2, 343:4, 254:1, 302:3}
 # 5k - 204   1 251 190 225
-# 50k - 273   1 343 254 302
+# 50k - 273   1 343 254 302 
 # ================================================== MODEL TRAINING ======================================
 
 # Creating mask for window-CBOW
@@ -181,15 +156,15 @@ with tf.Graph().as_default():
 	session_conf = tf.ConfigProto(
 	allow_soft_placement=FLAGS.allow_soft_placement,
 	log_device_placement=FLAGS.log_device_placement)
-
+	
 	session_conf.gpu_options.allow_growth = True
 
 	sess = tf.Session(config=session_conf)
 
 	with sess.as_default():
-
+		
 		stan_reader = StanfordReader(max_entities = 5, batch_size = FLAGS.batch_size)
-
+		
 		# Define Training procedure
 
 		global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -248,13 +223,13 @@ with tf.Graph().as_default():
 		# Initialize all variables
 		sess.run(tf.initialize_all_variables())
 
-
+		
 		def train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch, batch_cbow_mask, window_size):
-
+			
 			#seq_len_d = np.array([np.sum(doc != 0) for doc in x_batch_d])
 			#seq_len_q = np.array([np.sum(ques != 0) for ques in x_batch_q])
 			#max_seq_len_d = np.max(seq_len_d)
-			#max_seq_len_q = np.max(seq_len_q)
+			#max_seq_len_q = np.max(seq_len_q)		
 
 			#A single training step
 			feed_dict = {
@@ -269,7 +244,7 @@ with tf.Graph().as_default():
 			    stan_reader.num_docs: len(x_batch_d),
 			    stan_reader.max_length: 2943,
 			}
-
+	
 
 			_, step, summaries, loss, accuracy = sess.run(
 			    [train_op, global_step, train_summary_op, stan_reader.loss, stan_reader.accuracy],
@@ -312,30 +287,30 @@ with tf.Graph().as_default():
 			print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
 			if writer:
 			    writer.add_summary(summaries, step)
-
+		
 
 		# Generate batches
+		
+		batches = batch_iter(list(zip(x_train_d, x_train_q, y_train_choices, y_train)), FLAGS.batch_size, FLAGS.num_epochs)     
 
-		batches = batch_iter(list(zip(x_train_d, x_train_q, y_train_choices, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
-
-
+		
 		for batch in batches:
 
 			x_batch_d, x_batch_q, y_batch_choices, y_batch = zip(*batch)
-
+			
 			batch_accuracy = train_step(x_batch_d, x_batch_q, y_batch_choices, y_batch, batch_cbow_mask, FLAGS.window_size)
 
 
 			current_step = tf.train.global_step(sess, global_step)
 			if current_step % FLAGS.evaluate_every == 0:
 			    print("\nEvaluation:")
-
+		   	    
 			    dev_step(x_val_d, x_val_q, y_val_choices, y_val, val_cbow_mask, FLAGS.window_size, writer=dev_summary_writer)
 
 			if current_step % FLAGS.checkpoint_every == 0:
 			    path = saver.save(sess, checkpoint_prefix, global_step=current_step)
 			    print("Saved model checkpoint to {}\n".format(path))
-
+		
 
 		'''
 		x_batch_d, x_batch_q, y_batch_choices, y_batch = x_train_d[:32, :], x_train_q[:32, :], y_train_choices[:32, :], y_train[:32]
