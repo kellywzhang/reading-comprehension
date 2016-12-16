@@ -108,8 +108,8 @@ def one_time_data_preparation():
 
     all_corpus_vocabulary = learn.preprocessing.VocabularyProcessor(max_vocab)
     # Saving the vocabulary for future purposes
-    cPickle.dump(all_corpus_vocabulary, open('/scratch/vdn207/qa_project/final_saved_data/all_corpus_vocab.p', 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-
+    
+    pickle.dump(all_corpus_vocabulary, open('/scratch/vdn207/qa_project/small_final_data/all_corpus_vocab.p', 'wb'))
     x_train_d = np.array(list(all_corpus_vocabulary.fit_transform(train_d)))
     max_train_d_len = max([len(x.split(" ")) for x in train_d])
     print ("Train D: ", x_train_d.shape)
@@ -129,7 +129,7 @@ def one_time_data_preparation():
     max_train_q_len = max([len(x.split(" ")) for x in train_q])
     print ("Train Q: ", x_train_q.shape)
     np.save(open('/scratch/vdn207/qa_project/final_saved_data/x_train_q', 'wb'), x_train_q[:, :max_train_q_len])
-
+    
     x_val_q = np.array(list(all_corpus_vocabulary.fit_transform(val_q)))
     max_val_q_len = max([len(x.split(" ")) for x in val_q])
     print ("Val Q: ", x_val_q.shape)
@@ -138,6 +138,7 @@ def one_time_data_preparation():
     x_test_q = np.array(list(all_corpus_vocabulary.transform(test_q)))
     max_test_q_len = max([len(x.split(" ")) for x in test_q])
     print ("Test Q: ", x_test_q.shape)
+
     np.save(open('/scratch/vdn207/qa_project/final_saved_data/x_test_q', 'wb'), x_test_q[:, :max_test_q_len])
 
     y_train_choices = np.array(list(all_corpus_vocabulary.fit_transform(all_train_choices)))
@@ -160,6 +161,7 @@ def one_time_data_preparation():
 
     y_test = np.array(list(all_corpus_vocabulary.transform(test_correct_choices)))
     np.save(open('/scratch/vdn207/qa_project/final_saved_data/y_test', 'wb'), y_test[:, 0])
+
 
 
 def make_data_file(in_file_path, write_file, relabeling=True):

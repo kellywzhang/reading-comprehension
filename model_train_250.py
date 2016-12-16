@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 import datetime
-from StanfordReader import StanfordReader
+from StanfordReader250 import StanfordReader
 from tensorflow.contrib import learn
 import data_utils
 import pickle
@@ -68,7 +68,7 @@ print("Loading data...")
 # Loading all data points from pickle files
 all_corpus_vocabulary = pickle.load(open('/scratch/vdn207/qa_project/reading-comprehension/final_saved_data/all_corpus_vocab.p', 'rb'))
 
-num_words = 2943
+num_words = 250
 
 print ("Loading documents....")
 
