@@ -6,6 +6,8 @@ reference/*
 .ipynb_checkpoints/*
 testing/*.p
 runs/*
+old/*
+deploy/*
 
 # Files #
 ######################

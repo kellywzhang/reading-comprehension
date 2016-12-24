@@ -29,7 +29,6 @@ class RNNCell(object):
     """Return zero-filled state tensor(s)."""
     return tf.zeros(shape=[batch_size, self._state_size])
 
-
 class GRUCell(RNNCell):
   """Gated Recurrent Unit cell (cf. http://arxiv.org/abs/1406.1078)."""
 
@@ -80,3 +79,6 @@ class GRUCell(RNNCell):
 
     def zero_state(self, batch_size):
         return tf.Variable(tf.zeros([batch_size, state_size]), dtype=tf.float32)
+
+class LSTMCell(RNNCell):
+    pass
