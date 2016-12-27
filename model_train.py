@@ -60,7 +60,7 @@ with tf.Graph().as_default():
 
     with sess.as_default():
 
-        stan_reader = StanfordReader(max_entities = 5, batch_size = FLAGS.batch_size)
+        stan_reader = StanfordReader(max_entities=5, batch_size=FLAGS.batch_size)
 
         # Define Training procedure
         global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -168,7 +168,7 @@ with tf.Graph().as_default():
             if current_step % FLAGS.evaluate_every == 0:
                 print("\nEvaluation:")
 
-                dev_step(d_padded_val, q_padded_val, c_indices_val, a_indices_val, writer=dev_summary_writer)
+                #dev_step(d_padded_val, q_padded_val, c_indices_val, a_indices_val, writer=dev_summary_writer)
 
 
             if current_step % FLAGS.checkpoint_every == 0:

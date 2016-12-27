@@ -14,16 +14,17 @@ class BilinearFunction(object):
     def __init__(self, attending_size, attended_size, scope=None):
       self._attending_size = attending_size
       self._attended_size = attended_size
-      self._scope = scope
+      self._scope = scope or type(self).__name__ # "BilinearFunction"
 
     # Expect dimensions: attending (batch x attending_size),
         # attended (batch x time x attended_size) - time could be other dim value
-    def __call__(self, attending, attended, time_mask, scope=None):
-      with tf.variable_scope(self._scope or type(self).__name__):  # "BilinearFunction"
+    def __call__(self, attending, attended, seq_lens, scope=None):
+      with tf.variable_scope(self._scope):
           attending_size = self._attending_size
           attended_size= self._attended_size
-
           batch_size = tf.shape(attended)[0]
+
+          time_mask = tf.sequence_mask(seq_lens, dtype=tf.float32)
 
           # different initializer?
           self.W_bilinear = tf.get_variable(name="bilinear_attention", shape=[attending_size, attended_size], \

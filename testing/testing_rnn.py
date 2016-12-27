@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import sys
+import os
 os.path.abspath(os.path.curdir)[:-8]
 sys.path.insert(0, os.path.abspath(os.path.curdir)[:-8])
 
@@ -60,6 +61,19 @@ elems = tf.transpose(inputx) #np.array([1, 2, 3, 4, 5, 6])
 
 seqimp = tf.scan(lambda a, x: a + x, elems)
 
+c = tf.constant(3)
+l = tf.constant([20,30,40,50,60,2,3,4,5,0])
+
+
+temp = tf.placeholder(tf.int32, [None])
+feed = {temp:[20,30,40,50,60,2,3,4,5,0]}
+#assert l.get_shape() == temp.get_shape()
+
+aaa = tf.constant([x for x in range(tf.shape(temp)[0])])
+
+tf.assert_equal(tf.shape(temp), 10)#tf.shape(l))
+ab = l >= c
+
 sess.run(tf.initialize_all_variables())
 
 print(slice1.get_shape())
@@ -78,6 +92,9 @@ print(seq_len_mask.eval())
 print(anti_time_mask.eval())
 
 print(seqimp.eval())
+print(ab.eval())
+print(temp.eval(feed))
+print(aaa.eval(feed))
 
 #print(document_embedding.eval())
 #print(reverse.eval())

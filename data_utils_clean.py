@@ -9,7 +9,6 @@ Datasets:
         Validation: 3,924
         Test:       3,198
     DailyMail (http://cs.nyu.edu/~kcho/DMQA/)
-    Who-Did-What
 
 TODO/ISSUES: Numbers/times in documents (not represented well in vocabulary)
              Make method for loading pre-trained word embeddings
@@ -165,7 +164,7 @@ def batch_iter(data, num_epochs=30, batch_size=32, shuffle=True):
     data = np.array(data)
     data_size = len(data)
     num_batches_per_epoch = int(len(data)/batch_size)
-    for epoch in range(num_epochs+1):
+    for epoch in range(num_epochs):
         # Shuffle the data at each epoch
         if shuffle:
             shuffle_indices = np.random.permutation(np.arange(data_size))
@@ -197,119 +196,12 @@ def pad_batch(batch, train=True):
 
     return (d_padded, q_padded, a_indices, entity_counts)
 
-def pad_batch_wdw(batch, train=True):
-    #if train:
-    d_indices = batch[:,0]
-    q_indices = batch[:,1]
-    c_indices = batch[:,2]
-    a_indices = batch[:,3]
-    # else:
-    #     d_indices = batch[0]
-    #     q_indices = batch[1]
-    #     c_indices = batch[2]
-    #     a_indices = batch[3]
-
-    d_len = max([len(x) for x in d_indices])
-    q_len = max([len(x) for x in q_indices])
-
-    d_padded = np.vstack(tuple([np.pad(x, (0, d_len-len(x)), "constant", constant_values=(-1)) for x in d_indices]))
-    q_padded = np.vstack(tuple([np.pad(x, (0, q_len-len(x)), "constant", constant_values=(-1)) for x in q_indices]))
-
-    return (d_padded, q_padded, c_indices, a_indices)
-
-def create_batches_wdw(num_epochs, batch_size, shuffle, data_path="", dataset="train", old=False, num_examples=None, vocab_size=100000):
-    if num_examples is not None:
-        if old:
-            data = load_text_data_old(data_path, dataset, num_examples)
-        else:
-            data = load_text_data(data_path, dataset, num_examples)
-    else:
-        if old:
-            data = load_text_data_old(data_path, dataset, num_examples)
-        else:
-            data = load_text_data(data_path, dataset, num_examples)
-
-    # data[0] = documents, data[1] = questions, data[2] = choices_ent data[3] = correct_choices_ent
-
-    if dataset == "train":
-        vocab_dict = build_vocab(data[0]+data[1], vocab_size)
-        entity_dict = {
-            "@entity0":vocab_dict["@entity0"],
-            "@entity1":vocab_dict["@entity1"],
-            "@entity2":vocab_dict["@entity2"],
-            "@entity3":vocab_dict["@entity3"],
-            "@entity4":vocab_dict["@entity4"]
-            }
-        pickle.dump(vocab_dict, open("vocab_dict.p", "wb"))
-        pickle.dump(entity_dict, open("entity_dict.p", "wb"))
-    else:
-        vocab_dict = pickle.load(open("vocab_dict.p", "rb"))
-        entity_dict = pickle.load(open("entity_dict.p", "rb"))
-
-    d_indices, q_indices, c_indices, a_indices = \
-        vectorize_data_wdw(documents=data[0],
-                           questions=data[1],
-                           choices=data[2],
-                           answers=data[3],
-                           vocabulary_dict=vocab_dict,
-                           entity_dict=entity_dict)
-
-    train_data = list(zip(d_indices, q_indices, c_indices, a_indices))
-    batches = batch_iter(train_data, num_epochs=num_epochs, batch_size=batch_size, shuffle=shuffle)
-    return batches
-
 if __name__ == "__main__":
     """
     Purpose:
         Run with argument path to data and will automatically create relabeled,
             single-file (one for train, validation, test) version of dataset.
     """
-    # import sys
-    # # argument is data_path to questions file of cnn/dailymail datasets
-    # data_path = sys.argv[1]
-    # train_path = os.path.join(data_path, "training")
-    # validation_path = os.path.join(data_path, "validation")
-    # test_path = os.path.join(data_path, "test")
-    #
-    # make_data_file(train_path, os.path.join(data_path, "train.txt"))
-    # make_data_file(validation_path, os.path.join(da_path, "validation.txt"))
-    # make_data_file(test_path, os.path.join(data_path, "test.txt"))
-
-    # data = load_text_data("/Users/kellyzhang/Documents/ReadingComprehension/reading-comprehension/deploy/data/", "val", 10)
-    # # data[0] = documents, data[1] = questions, data[2] = choices_ent data[3] = correct_choices_ent
-    # vocab_dict = build_vocab(data[0]+data[1], 10000000)
-    #
-    # entity_dict = {
-    #     "@entity0":vocab_dict["@entity0"],
-    #     "@entity1":vocab_dict["@entity1"],
-    #     "@entity2":vocab_dict["@entity2"],
-    #     "@entity3":vocab_dict["@entity3"],
-    #     "@entity4":vocab_dict["@entity4"]
-    #     }
-    #
-    # d_indices, q_indices, c_indices, a_indices = \
-    #     vectorize_data_wdw(documents=data[0],
-    #                        questions=data[1],
-    #                        choices=data[2],
-    #                        answers=data[3],
-    #                        vocabulary_dict=vocab_dict,
-    #                        entity_dict=entity_dict)
-    #
-    # train_data = list(zip(d_indices, q_indices, c_indices, a_indices))
-    # batches = batch_iter(train_data, num_epochs=200, batch_size=2, shuffle=True)
-    #
-    # #print(len(train_data))
-    #
-    # i = 0
-    # for batch in batches:
-    #     d_padded, q_padded, c_indices, a_indices = pad_batch_wdw(batch, train=True)
-    #     print(i)
-    #     i += 1
-
-    # print(d_indices)
-    # print(q_indices)
-    # print(c_indices)
-    # print(a_indices)
 
     data_path = "/Users/kellyzhang/Documents/ReadingComprehension/reading-comprehension/deploy/data/"
     doc = load_text_data_old(data_path, "val", max_examples=10)
